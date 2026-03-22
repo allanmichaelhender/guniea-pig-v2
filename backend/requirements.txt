@@ -6,3 +6,4 @@ redis==3.5.3
 sentence-transformers==2.2.2
 requests==2.31.0
 gunicorn==21.2.0
+pgvector==0.2.4
