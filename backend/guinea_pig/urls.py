@@ -14,12 +14,9 @@ Class-based views
 
 from django.contrib import admin
 from django.urls import path
+from .api import api
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    # path("api/", include("api.urls")),
-    # path("assets/", include("assets.urls")),
-    # path("portfolio/", include("portfolio.urls")),
-    # path("ml/", include("ml.urls")),
-    # path("tasks/", include("tasks.urls")),
+    path("api/", api.urls),
 ]
