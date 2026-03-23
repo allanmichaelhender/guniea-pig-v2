@@ -25,9 +25,6 @@ class Command(BaseCommand):
         with open(options["file"], "r") as f:
             target_tickers = {row[0].strip() for row in csv.reader(f) if row}
 
-            self.stdout.write(str(target_tickers))
-            self.stdout.write(str(len(target_tickers)))
-
         self.stdout.write(f"Found {len(target_tickers)} tickers in file.")
 
         # 2. Mark as base assets

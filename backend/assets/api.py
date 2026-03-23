@@ -1,5 +1,5 @@
 from typing import List, Optional
-from ninja import Router
+from ninja import Router, Query
 from assets.models import Asset
 from pgvector.django import CosineDistance
 from sentence_transformers import SentenceTransformer
@@ -22,7 +22,6 @@ def get_embedding_model():
     return _model
 
 
-
 @router.get("/", response=List[AssetSchema])
 def list_assets(
     request, search: Optional[str] = None, limit: int = 50, offset: int = 0
@@ -34,7 +33,13 @@ def list_assets(
     return qs[offset : offset + limit]
 
 
-@router.post("/search", response=List[AssetSchema])
+@router.get("/ticker-search", response=List[AssetSchema])
+def search_tickers(request, q: str = Query(..., min_length=1)):
+    # Filter for base assets only, case-insensitive match, limit 10
+    return Asset.objects.filter(is_base_asset=True, ticker__icontains=q)[:5]
+
+
+@router.post("/semantic-search", response=List[AssetSchema])
 def semantic_search(request, payload: SemanticSearchSchema):
     """
     Performs a semantic search using pgvector cosine distance.
