@@ -10,7 +10,7 @@ End-to-end architecture: React/Vite/Django, Tiingo + FinanceDatabase asset spine
 
 **Guniea Pig Portfolio** is an **interactive portfolio simulation** product: **~5 years of adjusted historical prices** (Tiingo), **multi-year “hidden risk”** via return-based **KMeans** clusters, **long-horizon volatility surge** signals, **semantic asset search** (embeddings + **pgvector**), and **Grok** for plain-language explanation—not for inventing numbers or trades. **Target users think in years**, not days; copy and batch jobs should reflect that.
 
-**Stack (locked direction):** **React (TS) + Vite + Tailwind + Recharts** · **Django** API · **PostgreSQL + pgvector** · **Redis + Django Q2** · **Docker Compose** (Nginx, Gunicorn, services) · **GCP** deployment; TLS via **managed certs / LB** or **Certbot**—choose one path to avoid double termination.
+**Stack (locked direction):** **React (TS) + Vite + Tailwind + Recharts** · **Django (Ninja)** API · **PostgreSQL + pgvector** · **Redis + Django Q2** · **Docker Compose** (Nginx, Gunicorn, services) · **GCP** deployment; TLS via **managed certs / LB** or **Certbot**—choose one path to avoid double termination.
 
 **Data spine:** Tiingo **master list CSV** (`ticker`, `exchange`, `assetType`, `priceCurrency`, `startDate`, `endDate`) + price history; **FinanceDatabase** enriches metadata; **identifier ladder** (not a naive ticker join); embeddings via **`sentence-transformers/all-MiniLM-L6-v2`** (384d) into **pgvector** for RAG.
 
@@ -56,14 +56,14 @@ flowchart LR
   Django --> Grok
 ```
 
-| Layer | Choice |
-| ----- | ------ |
-| UI | React + TypeScript + Vite + Tailwind; **Recharts** (optional thin chart wrapper) |
-| API | Django + Gunicorn |
-| Jobs | **Django Q2** + Redis (locked); idempotent tasks, timeouts, logs/DB job status |
-| DB | PostgreSQL + **pgvector** |
-| Caching / broker | Redis |
-| Deploy | Docker Compose locally; **one GCP VM** in prod; **Nginx** reverse proxy |
+| Layer            | Choice                                                                           |
+| ---------------- | -------------------------------------------------------------------------------- |
+| UI               | React + TypeScript + Vite + Tailwind; **Recharts** (optional thin chart wrapper) |
+| API              | Django (**Ninja**) + Gunicorn                                                    |
+| Jobs             | **Django Q2** + Redis (locked); idempotent tasks, timeouts, logs/DB job status   |
+| DB               | PostgreSQL + **pgvector**                                                        |
+| Caching / broker | Redis                                                                            |
+| Deploy           | Docker Compose locally; **one GCP VM** in prod; **Nginx** reverse proxy          |
 
 **Tasks vs Celery:** **Celery** was considered; **Q2 + Redis** stays for simpler ops. Revisit Celery only if you need heavy multi-queue pools and mature ops patterns.
 
@@ -75,7 +75,7 @@ flowchart LR
   - **`frontend/`** — React + Vite + TypeScript + Tailwind.
 - Add **`docker/`** (Compose files, optional `nginx/` configs) at repo root when you scaffold—keep orchestration next to both apps.
 
-*Naming:* If you prefer **`django/`** instead of **`backend/`**, use that; the important part is **one repo**, **two app trees**, **one VM** in prod.
+_Naming:_ If you prefer **`django/`** instead of **`backend/`**, use that; the important part is **one repo**, **two app trees**, **one VM** in prod.
 
 ### HTTPS: Certbot (Let’s Encrypt) vs GCP-managed
 
@@ -102,11 +102,11 @@ flowchart LR
 
 ## 4. Data
 
-| Source | Role |
-| ------ | ---- |
-| **Tiingo** | **Source of truth** for **adjusted** historical prices and **master ticker CSV** |
-| **FinanceDatabase** | **Enrichment**: names, sector, industry, country, etc. |
-| **5-year history** | **Backtests / simulation** paths; separate from ML feature-window length |
+| Source              | Role                                                                             |
+| ------------------- | -------------------------------------------------------------------------------- |
+| **Tiingo**          | **Source of truth** for **adjusted** historical prices and **master ticker CSV** |
+| **FinanceDatabase** | **Enrichment**: names, sector, industry, country, etc.                           |
+| **5-year history**  | **Backtests / simulation** paths; separate from ML feature-window length         |
 
 **Tiingo CSV**
 
@@ -165,7 +165,7 @@ flowchart LR
 
 Pin this id in app config; store **`embedding_model`** on each row. **Re-embed** the universe if you ever change model.
 
-*Optional later (if retrieval quality is weak):* `BAAI/bge-small-en-v1.5`, `all-mpnet-base-v2`, etc.—treat as a new migration + full re-embed, not a silent swap.
+_Optional later (if retrieval quality is weak):_ `BAAI/bge-small-en-v1.5`, `all-mpnet-base-v2`, etc.—treat as a new migration + full re-embed, not a silent swap.
 
 ---
 
@@ -221,9 +221,9 @@ Pin this id in app config; store **`embedding_model`** on each row. **Re-embed**
 
 **Locked (v1)**
 
-- **Metric:** **one-year rolling realized volatility** **σ_252** — annualized stdev of the last **252 trading days** of **daily** log returns (clustering uses **weekly** returns; surge uses **daily** bars for σ_252—intentional).
-- **Baseline:** **multi-year** history (e.g. **3–5 years**) of past **σ_252** values for that asset; **median** = long-run norm.
-- **SPY:** use **SPY’s σ_252** as context for **market-wide** vs **idiosyncratic** stress (optional flag when both spike).
+- **Metric:** **one-year rolling realized volatility** **σ_52** — annualized stdev of the last **52 weeks** of **weekly** log returns.
+- **Baseline:** **multi-year** history (e.g. **3–5 years**) of past **σ_52** values for that asset; **median** = long-run norm.
+- **SPY:** use **SPY’s σ_52** as context for **market-wide** vs **idiosyncratic** stress (optional flag when both spike).
 
 - **Trigger:** ratio ≥ ~2× median **or** z ≥ ~3 vs multi-year distribution (pick one primary during implementation).
 - **Ops:** **weekly/monthly** batch evaluation; **cooldowns** weeks–months; **liquidity** floor.
@@ -233,13 +233,13 @@ Pin this id in app config; store **`embedding_model`** on each row. **Re-embed**
 
 ## 9. Feature summary (user-visible)
 
-| Feature | Description |
-| ------- | ----------- |
-| **Portfolio simulation** | ~5y historical paths on Tiingo data |
-| **Hidden risk auditor** | Multi-year clusters, concentration, diversification score, cluster map |
-| **Vol surge alert** | **σ_252** vs multi-year baseline; SPY context for regime |
-| **RAG asset search** | Natural-language → pgvector over embedded asset sentences |
-| **Grok narratives** | Explain clusters, surges, search results with disclaimers + citations |
+| Feature                  | Description                                                            |
+| ------------------------ | ---------------------------------------------------------------------- |
+| **Portfolio simulation** | ~5y historical paths on Tiingo data                                    |
+| **Hidden risk auditor**  | Multi-year clusters, concentration, diversification score, cluster map |
+| **Vol surge alert**      | **σ_52** vs multi-year baseline; SPY context for regime                |
+| **RAG asset search**     | Natural-language → pgvector over embedded asset sentences              |
+| **Grok narratives**      | Explain clusters, surges, search results with disclaimers + citations  |
 
 ---
 
@@ -272,7 +272,7 @@ Pin this id in app config; store **`embedding_model`** on each row. **Re-embed**
 2. **Clustering:** **Locked:** 3y **weekly** log returns; still to pick **K** and refit schedule.
 3. **Diversification:** Exact penalty formula and cluster weight caps for UI.
 4. **Cluster beta:** Precise regression rule vs **SPY** (benchmark locked).
-5. **Surge:** **Locked:** **σ_252**; still to pick ratio vs z threshold, baseline years (3–5y), cooldown length.
+5. **Surge:** **Locked:** **σ_52** (weekly); still to pick ratio vs z threshold, baseline years (3–5y), cooldown length.
 6. **FD matching:** Final ladder rules per FinanceDatabase’s actual API surface; manual review workflow or not.
 7. **Embedding:** **Locked:** `sentence-transformers/all-MiniLM-L6-v2` (384d); still pick **pgvector** index type (IVFFlat/HNSW) at implementation.
 8. **TLS:** Use **Certbot on Nginx** (VM) **or** **GCP-managed cert on LB**—see [HTTPS: Certbot vs GCP-managed](#https-certbot-lets-encrypt-vs-gcp-managed); one termination point.
@@ -296,26 +296,26 @@ Pin this id in app config; store **`embedding_model`** on each row. **Re-embed**
 
 **Product / analytics (from §11 — at least pick defaults):**
 
-| Topic | Why it matters early |
-| ----- | -------------------- |
-| **Investable universe** | Which Tiingo `assetType`s and regions are in v1—drives DB size, jobs, and UI scope. |
-| **Clustering** | **Locked:** 3y weekly returns; still **K** + refit cadence. |
-| **Diversification + cluster beta** | Formulas; **SPY** locked as benchmark. |
-| **Surge** | **Locked:** σ_252; ratio vs z, baseline years, cooldowns. |
-| **Backtest metrics** | Keep simple vs **SPY** (details TBD). |
-| **Embedding model** | **Locked:** `all-MiniLM-L6-v2` (384d); index type IVFFlat/HNSW TBD. |
-| **TLS strategy** | Certbot on VM vs GCP-managed on LB—drives infra repo layout, not Django code day one. |
+| Topic                              | Why it matters early                                                                  |
+| ---------------------------------- | ------------------------------------------------------------------------------------- |
+| **Investable universe**            | Which Tiingo `assetType`s and regions are in v1—drives DB size, jobs, and UI scope.   |
+| **Clustering**                     | **Locked:** 3y weekly returns; still **K** + refit cadence.                           |
+| **Diversification + cluster beta** | Formulas; **SPY** locked as benchmark.                                                |
+| **Surge**                          | **Locked:** σ_52; ratio vs z, baseline years, cooldowns.                              |
+| **Backtest metrics**               | Keep simple vs **SPY** (details TBD).                                                 |
+| **Embedding model**                | **Locked:** `all-MiniLM-L6-v2` (384d); index type IVFFlat/HNSW TBD.                   |
+| **TLS strategy**                   | Certbot on VM vs GCP-managed on LB—drives infra repo layout, not Django code day one. |
 
 **Platform & repo (decide or default before scaffolding):**
 
-| Topic | Notes |
-| ----- | ----- |
-| **GCP shape** | **Locked:** **one VM** + Docker Compose—see [Repo layout & GCP shape](#repo-layout--gcp-shape-locked). |
-| **Python + Node LTS** | Pin **Python** (e.g. 3.12) and **Node** (e.g. 20 LTS) in `Dockerfile` / `.tool-versions` / docs. |
-| **Monorepo layout** | **Locked:** `backend/` (Django) + `frontend/` (React) under one repo root; optional `docker/`. |
-| **Auth v1** | Session login vs JWT vs “no auth” for private alpha—drives Django middleware and React routes. |
-| **Domain** | Final hostname for Tiingo/Grok **allowlists** and Certbot **CN/SAN** (can be staging + prod). |
-| **Accounts & keys** | Tiingo API token, Grok API, GCP project/billing—exist before real integrations. |
+| Topic                 | Notes                                                                                                  |
+| --------------------- | ------------------------------------------------------------------------------------------------------ |
+| **GCP shape**         | **Locked:** **one VM** + Docker Compose—see [Repo layout & GCP shape](#repo-layout--gcp-shape-locked). |
+| **Python + Node LTS** | Pin **Python** (e.g. 3.12) and **Node** (e.g. 20 LTS) in `Dockerfile` / `.tool-versions` / docs.       |
+| **Monorepo layout**   | **Locked:** `backend/` (Django) + `frontend/` (React) under one repo root; optional `docker/`.         |
+| **Auth v1**           | Session login vs JWT vs “no auth” for private alpha—drives Django middleware and React routes.         |
+| **Domain**            | Final hostname for Tiingo/Grok **allowlists** and Certbot **CN/SAN** (can be staging + prod).          |
+| **Accounts & keys**   | Tiingo API token, Grok API, GCP project/billing—exist before real integrations.                        |
 
 **Can wait until first vertical slice:** exact **FinanceDatabase** ladder code paths (confirm against live library), **IVFFlat vs HNSW** tuning, alert copy, and **CI** (GitHub Actions vs Cloud Build).
 
@@ -325,13 +325,38 @@ Pin this id in app config; store **`embedding_model`** on each row. **Re-embed**
 
 **Purpose:** ~**100** liquid US-listed names + ETFs across **benchmarks**, **mega-caps**, **GICS sector reps**, **high-vol growth**, and **macro/thematic ETFs**—enough variety for **beta vs benchmarks**, **KMeans** that can separate sectors/styles, **vol surge** stress tests, and **RAG** “macro” queries.
 
-| Bucket | Count | Role |
-| ------ | ----- | ---- |
-| Benchmarks | 5 | SPY, QQQ, IWM, DIA, VTI — **controls** for beta and performance comparison |
-| Magnificent Seven + mega-caps | 15 | AAPL, MSFT, NVDA, GOOGL, AMZN, META, TSLA + BRK-B, LLY, UNH, JPM, V, MA, AVGO, COST |
-| Sector reps (11 GICS × 5) | 55 | Tech, Financials, Healthcare, Discretionary, Energy, Industrials, Staples, Utilities, Real Estate, Materials, Communication — **5 tickers each** (see your detailed lists in product notes) |
-| High-vol / growth | 15 | PLTR, SNOW, MSTR, COIN, ARM, SQ, SHOP, U, SE, DASH, HOOD, ROKU, PATH, AI, ZS |
-| International / thematic ETFs | 10 | EFA, VWO, ARKK, SMH, GLD, TLT, XBI, KWEB, TAN, URNM |
+| Bucket                        | Count | Role                                                                                                                                                                                        |
+| ----------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Benchmarks                    | 5     | SPY, QQQ, IWM, DIA, VTI — **controls** for beta and performance comparison                                                                                                                  |
+| Magnificent Seven + mega-caps | 15    | AAPL, MSFT, NVDA, GOOGL, AMZN, META, TSLA + BRK-B, LLY, UNH, JPM, V, MA, AVGO, COST                                                                                                         |
+| Sector reps (11 GICS × 5)     | 55    | Tech, Financials, Healthcare, Discretionary, Energy, Industrials, Staples, Utilities, Real Estate, Materials, Communication — **5 tickers each** (see your detailed lists in product notes) |
+| High-vol / growth             | 15    | PLTR, SNOW, MSTR, COIN, ARM, SQ, SHOP, U, SE, DASH, HOOD, ROKU, PATH, AI, ZS                                                                                                                |
+| International / thematic ETFs | 10    | EFA, VWO, ARKK, SMH, GLD, TLT, XBI, KWEB, TAN, URNM                                                                                                                                         |
+
+**Full ticker list, totals 88 since some appear more than once**
+
+1. Benchmarks (5)
+   SPY, QQQ, IWM, DIA, VTI
+2. Magnificent Seven + Mega-Caps (15)
+   AAPL, MSFT, NVDA, GOOGL, AMZN, META, TSLA
+   BRK-B (Note: Tiingo uses a dash for Class B)
+   LLY, UNH, JPM, V, MA, AVGO, COST
+3. Sector Representatives (55)
+   Tech: MSFT, AAPL, NVDA, AVGO, CRM
+   Financials: JPM, BAC, WFC, MS, GS
+   Healthcare: LLY, UNH, JNJ, ABBV, MRK
+   Consumer Discretionary: AMZN, TSLA, HD, MCD, NKE
+   Energy: XOM, CVX, COP, SLB, EOG
+   Industrials: GE, CAT, HON, UNP, RTX
+   Consumer Staples: PG, COST, PEP, KO, WMT
+   Utilities: NEE, SO, DUK, CEG, AEP
+   Real Estate: PLD, AMT, EQIX, WELL, SPG
+   Materials: LIN, SHW, APD, FCX, NEM
+   Communication Services: META, GOOGL, NFLX, DIS, VZ
+4. High-Volatility / Growth (15)
+   PLTR, SNOW, MSTR, COIN, ARM, SQ, SHOP, U, SE, DASH, HOOD, ROKU, PATH, AI, ZS
+5. International / Thematic ETFs (10)
+   EFA, VWO, ARKK, SMH, GLD, TLT, XBI, KWEB, TAN, URNM
 
 **Assessment:** Strong **pedagogical** mix: benchmarks anchor analytics; sector grid feeds **clustering** diversity; high-vol set exercises **surge** logic; ETFs add **non-equity** and **macro** texture for search and correlation context.
 
@@ -345,4 +370,4 @@ Pin this id in app config; store **`embedding_model`** on each row. **Re-embed**
 
 ---
 
-*Cursor plan file (if synced): `C:\Users\allan\.cursor\plans\architecture_review_feedback_35470c64.plan.md` — this `docs/plan.md` is the **Guniea Pig Portfolio** project copy.*
+_Cursor plan file (if synced): `C:\Users\allan\.cursor\plans\architecture_review_feedback_35470c64.plan.md` — this `docs/plan.md` is the **Guniea Pig Portfolio** project copy._

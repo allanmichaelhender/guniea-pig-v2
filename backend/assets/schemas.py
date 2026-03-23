@@ -13,4 +13,4 @@ class AssetSchema(Schema):
 
 class SemanticSearchSchema(Schema):
     query: str
-    limit: int = 10
+    limit: int = 5
