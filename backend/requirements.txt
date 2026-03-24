@@ -5,7 +5,7 @@ djangorestframework
 financedatabase
 gunicorn
 huggingface-hub>=0.20.0
-ninja_jwt
+django-ninja-jwt
 numpy
 pandas
 pgvector
