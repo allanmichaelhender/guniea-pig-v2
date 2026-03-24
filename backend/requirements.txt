@@ -5,6 +5,8 @@ djangorestframework
 financedatabase
 gunicorn
 huggingface-hub>=0.20.0
+ninja_jwt
+numpy
 pandas
 pgvector
 psycopg2-binary

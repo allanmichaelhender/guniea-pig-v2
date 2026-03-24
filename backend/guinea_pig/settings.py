@@ -45,6 +45,8 @@ INSTALLED_APPS = [
     "api",
     "ml",
     "tasks",
+    "ninja_jwt",
+    "ninja",
 ]
 
 MIDDLEWARE = [

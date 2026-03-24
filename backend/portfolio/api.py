@@ -1,17 +1,18 @@
 from typing import List
 from ninja import Router
 from django.shortcuts import get_object_or_404
+from ninja_jwt.authentication import JWTAuth
 from .models import Portfolio, Holding
-from .schemas import PortfolioIn, PortfolioOut
+from .schemas import PortfolioIn, PortfolioOut, SimulationResponse
 from .engine import calculate_portfolio_metrics
 from assets.models import Asset
 
 router = Router()
 
-# --- Guest / Ephemeral Routes ---
+# --- Guest Routes ---
 
 
-@router.post("/simulate", auth=None)
+@router.post("/simulate", auth=None, response=SimulationResponse)
 def simulate_portfolio(request, payload: PortfolioIn):
     """
     Runs analytics on a portfolio WITHOUT saving it to the DB.
@@ -21,30 +22,53 @@ def simulate_portfolio(request, payload: PortfolioIn):
     holdings_data = [{"ticker": h.ticker, "weight": h.weight} for h in payload.holdings]
 
     try:
-        results = calculate_portfolio_metrics(holdings_data)
+        results = calculate_portfolio_metrics(
+            holdings_data, start_date=payload.start_date
+        )
         return results
     except ValueError as e:
+        # in a real app, use 422 or 400 response code
         return {"error": str(e)}
 
 
-# --- User / Persistence Routes ---
+# --- User Routes ---
 
 
-@router.get("/", response=List[PortfolioOut])
+@router.get("/", response=List[PortfolioOut], auth=JWTAuth())
 def list_portfolios(request):
-    # TODO: Filter by request.user once Auth is fully wired
-    # For now, return all public + user's
-    return Portfolio.objects.all()
+    return Portfolio.objects.filter(user=request.user)
 
 
-@router.post("/", response=PortfolioOut)
+@router.post("/", response=PortfolioOut, auth=JWTAuth())
 def create_portfolio(request, payload: PortfolioIn):
     # 1. Create Portfolio
-    # TODO: Assign request.user
+
+    # 1a. Run Calculation immediately
+    holdings_data = [{"ticker": h.ticker, "weight": h.weight} for h in payload.holdings]
+    metrics_data = {}
+    try:
+        engine_result = calculate_portfolio_metrics(
+            holdings_data, start_date=payload.start_date
+        )
+        if "metrics" in engine_result:
+            metrics_data = engine_result["metrics"]
+            # Add history to separate var
+            metrics_data["performance_history"] = engine_result.get("performance_chart")
+    except Exception:
+        # If calc fails, we still create portfolio but with empty stats
+        pass
+
     portfolio = Portfolio.objects.create(
         name=payload.name,
         description=payload.description,
-        # user=request.user
+        start_date=payload.start_date,
+        user=request.user,
+        # Save computed metrics
+        annualized_return=metrics_data.get("annualized_return"),
+        volatility=metrics_data.get("volatility"),
+        sharpe_ratio=metrics_data.get("sharpe_ratio"),
+        max_drawdown=metrics_data.get("max_drawdown"),
+        performance_history=metrics_data.get("performance_history"),
     )
 
     # 2. Create Holdings (Bulk)
@@ -66,3 +90,6 @@ def create_portfolio(request, payload: PortfolioIn):
     Holding.objects.bulk_create(holdings_to_create)
 
     return portfolio
+
+
+x

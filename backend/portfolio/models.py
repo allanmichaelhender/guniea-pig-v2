@@ -13,11 +13,20 @@ class Portfolio(models.Model):
     )
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
+    start_date = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     # If true, this portfolio is visible to guests (e.g. "60/40 Benchmark")
     is_public = models.BooleanField(default=False)
+
+    # --- Cached Analytics ---
+    # Stored on Create/Update to avoid recalculating on every read
+    annualized_return = models.FloatField(null=True, blank=True)
+    volatility = models.FloatField(null=True, blank=True)
+    sharpe_ratio = models.FloatField(null=True, blank=True)
+    max_drawdown = models.FloatField(null=True, blank=True)
+    performance_history = models.JSONField(null=True, blank=True, help_text="Time series data for charts")
 
     def __str__(self):
         return f"{self.name} ({self.user})"
