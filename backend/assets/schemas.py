@@ -9,6 +9,12 @@ class AssetSchema(Schema):
     sector: Optional[str] = None
     industry: Optional[str] = None
     country: Optional[str] = None
+    
+    # Risk Metrics
+    cluster_id: Optional[int] = None
+    sigma_52: Optional[float] = None
+    cluster_x: Optional[float] = None
+    cluster_y: Optional[float] = None
 
 
 class SemanticSearchSchema(Schema):

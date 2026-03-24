@@ -14,7 +14,7 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.SUCCESS(
                     f"Pipeline complete. Updated {result['updated']} assets. "
-                    f"Clustered {result['clustered']} assets."
+                    f"Modeled on {result['clustered']} assets after removing ETF's and outliers."
                 )
             )
         else:

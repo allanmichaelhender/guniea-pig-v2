@@ -2,8 +2,12 @@ import pandas as pd
 import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
-from sklearn.metrics import silhouette_score
+from sklearn.metrics import davies_bouldin_score
+from sklearn.preprocessing import StandardScaler, RobustScaler
 from assets.models import Asset, Price
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy import stats
 
 
 def run_risk_pipeline():
@@ -16,7 +20,10 @@ def run_risk_pipeline():
     print("Fetching price history...")
 
     # 1. Load Data
-    qs = Price.objects.all().values("asset_id", "date", "adj_close")
+    # Use asset__assetType to access the 'assetType' field in the related Asset table
+    qs = Price.objects.exclude(asset__assetType="ETF").values(
+        "asset_id", "date", "adj_close"
+    )
     df = pd.DataFrame.from_records(qs)
 
     if df.empty:
@@ -44,60 +51,138 @@ def run_risk_pipeline():
         if not np.isnan(vol):
             updates[asset_id] = {"sigma_52": vol}
 
-    # --- Metric B: Hidden Risk Clustering (KMeans + PCA) ---
-    # Window = 3 years (~156 weeks)
+        # --- Metric B: Hidden Risk Clustering ---
     lookback_window = 156
     recent_returns = log_returns.tail(lookback_window)
 
-    # Filter: Ensure assets have full data for the window to cluster cleanly
-    # Assets with missing history in the last 3 years are excluded from the map/clustering
-    cluster_data = recent_returns.dropna(axis=1, how="any")
+    # 1. Thresh: Keep assets with at least 140 weeks of data (allows ~10% missing)
+    # 'thresh' counts non-NA values.
+    min_weeks = 140
+    cluster_data = recent_returns.dropna(axis=1, thresh=min_weeks)
+
+    # 2. Fill: Forward-fill the tiny gaps, then zero-fill any remaining start-of-series NaNs
+    # ffill() handles missing days in the middle; fillna(0) handles the very beginning.
+    cluster_data = cluster_data.ffill().fillna(0)
+
+    # Save the market mean return for detrending ETFs later (Market Beta)
+    market_mean_returns = cluster_data.mean(axis=1)
 
     # Features Matrix: Rows = Assets, Columns = Weekly Returns
     X = cluster_data.T
 
+    # --- NEW: De-trending (Relative Returns) ---
+    # Subtract the mean return of all assets for each specific week (axis=0)
+    # This removes the "Market Beta" signal
+    X_detrended = X.sub(X.mean(axis=0), axis=1)
+
+    # Now Scale the DE-TRENDED data
+    scaler = RobustScaler()
+    X_scaled = pd.DataFrame(
+        scaler.fit_transform(X_detrended), index=X.index, columns=X.columns
+    )
+
+    z_scores = np.abs(stats.zscore(X_scaled.std(axis=1)))
+    X_normal = X_scaled[z_scores < 1]
+    X_outliers = X_scaled[z_scores >= 1]
+
     n_clustered = 0
-    k = 0
 
-    if not X.empty and len(X) > 5:
-        # 1. Find the best K automatically
-        best_k = 2
-        best_score = -1
-        max_k = min(20, len(X) - 1)  # Don't try more clusters than you have assets
+    # We train the model ONLY on "Normal" assets (low vol/z-score) to get stable clusters
+    if X_normal.empty or len(X_normal) < 5:
+        return {"status": "error", "message": "Not enough data for clustering."}
 
-        for k_test in range(2, max_k + 1):
-            test_kmeans = KMeans(n_clusters=k_test, random_state=42, n_init=10)
-            test_labels = test_kmeans.fit_predict(X)
-            
-            # Silhouette score: higher is better (-1 to 1)
-            score = silhouette_score(X, test_labels)
-            
-            if score > best_score:
-                best_score = score
-                best_k = k_test
+    # 1. Find the best K automatically
+    best_k = 2
+    best_score = -1
+    max_k = 20  # Don't try more clusters than you have assets
 
+    for k_test in range(2, max_k + 1):
+        test_kmeans = KMeans(n_clusters=k_test, random_state=42, n_init=10)
+        test_labels = test_kmeans.fit_predict(X_normal)
 
-        print(f"Optimal clusters found: {best_k} (Score: {best_score:.3f})")
-        
-        kmeans = KMeans(n_clusters=best_k, random_state=42, n_init=10)
-        kmeans.fit(X)
-        labels = kmeans.labels_
+        # Davies-Bouldin score: lower is better
+        score = davies_bouldin_score(X_normal, test_labels)
+        if score < best_score or best_score == -1:
+            best_score = score
+            best_k = k_test
 
-        # 2. PCA for 2D Map
-        # Project the high-dimensional return history into 2D coordinates
-        pca = PCA(n_components=2, random_state=42)
-        coords = pca.fit_transform(X)
+    print(f"Optimal clusters found: {best_k} (Score: {best_score:.3f})")
 
-        # Map back to asset IDs
-        for i, asset_id in enumerate(X.index):
+    kmeans = KMeans(n_clusters=best_k, random_state=42, n_init=10)
+    kmeans.fit(X_normal)
+    labels = kmeans.labels_
+
+    # 2. PCA for 2D Map
+    # Project the high-dimensional return history into 2D coordinates
+    pca = PCA(n_components=2, random_state=42)
+    coords = pca.fit_transform(X_normal)
+
+    # Map back to asset IDs
+    for i, asset_id in enumerate(X_normal.index):
+        if asset_id not in updates:
+            updates[asset_id] = {}
+
+        updates[asset_id]["cluster_id"] = int(labels[i])
+        updates[asset_id]["cluster_x"] = float(coords[i, 0])
+        updates[asset_id]["cluster_y"] = float(coords[i, 1])
+
+    n_clustered += len(X_normal)
+
+    # --- Phase 2: Classify ETFs using the Stock Model ---
+    print("Classifying ETFs...")
+    etf_qs = Price.objects.filter(asset__assetType="ETF").values(
+        "asset_id", "date", "adj_close"
+    )
+    etf_df_raw = pd.DataFrame.from_records(etf_qs)
+
+    if not etf_df_raw.empty:
+        # 1. Pivot and calculate returns exactly like stocks
+        etf_prices = etf_df_raw.pivot(
+            index="date", columns="asset_id", values="adj_close"
+        ).sort_index()
+
+        etf_returns = np.log(etf_prices / etf_prices.shift(1)).tail(lookback_window)
+
+        # Align ETF columns (dates) to the Training Data (X) to ensure correct shape
+        # Reindex handles missing dates by filling NaN
+        etf_aligned = etf_returns.reindex(cluster_data.index).ffill().fillna(0).T
+
+        # Detrend ETFs using the MARKET MEAN from the stock universe
+        # This puts ETFs in the same relative space as the stocks
+        etf_detrended = etf_aligned.sub(market_mean_returns, axis=1)
+
+        # 2. Project into existing space (Use transform, NOT fit)
+        etf_scaled = scaler.transform(etf_detrended)
+        etf_labels = kmeans.predict(etf_scaled)
+        etf_coords = pca.transform(etf_scaled)
+
+        # 3. Add to updates dictionary
+        for i, asset_id in enumerate(etf_aligned.index):
             if asset_id not in updates:
                 updates[asset_id] = {}
+            updates[asset_id]["cluster_id"] = int(etf_labels[i])
+            updates[asset_id]["cluster_x"] = float(etf_coords[i, 0])
+            updates[asset_id]["cluster_y"] = float(etf_coords[i, 1])
 
-            updates[asset_id]["cluster_id"] = int(labels[i])
-            updates[asset_id]["cluster_x"] = float(coords[i, 0])
-            updates[asset_id]["cluster_y"] = float(coords[i, 1])
+    # --- Phase 3: Classify Outliers using the Stock Model ---
+    if not X_outliers.empty:
+        # Use the 'clean' scaler/model to transform the weirdos
+        # Note: X_outliers is already scaled, but we need to ensure it's handled if we re-used scaler?
+        # Actually X_outliers came from X_scaled which came from scaler.fit_transform.
+        # So X_outliers is ALREADY scaled. We just need to predict.
 
-        n_clustered = len(X)
+        outlier_labels = kmeans.predict(X_outliers)
+        outlier_coords = pca.transform(X_outliers)
+
+        # 4. Add to the same updates dictionary
+        for i, asset_id in enumerate(X_outliers.index):
+            if asset_id not in updates:
+                updates[asset_id] = {}
+            updates[asset_id]["cluster_id"] = int(outlier_labels[i])
+            updates[asset_id]["cluster_x"] = float(outlier_coords[i, 0])
+            updates[asset_id]["cluster_y"] = float(outlier_coords[i, 1])
+
+        n_clustered += len(X_outliers)
 
     # 3. Save to DB
     print("Saving results to database...")
@@ -117,6 +202,25 @@ def run_risk_pipeline():
         Asset.objects.bulk_update(
             assets_to_update, ["sigma_52", "cluster_id", "cluster_x", "cluster_y"]
         )
+
+    # 3. Create the debug plot (optional)
+    plt.figure(figsize=(10, 7))
+    # Plot the normal clusters
+    sns.scatterplot(
+        x=coords[:, 0],
+        y=coords[:, 1],
+        hue=labels,
+        palette="viridis",
+        s=100,
+        alpha=0.7,
+    )
+
+    plt.title("Asset Risk Map (De-trended & Scaled)")
+    plt.xlabel("PC1 (Primary Trend)")
+    plt.ylabel("PC2 (Secondary Trend)")
+    plt.grid(True, linestyle="--", alpha=0.6)
+    plt.savefig("risk_map.png", bbox_inches="tight")
+    print("Plot saved as risk_map.png")
 
     return {
         "status": "success",

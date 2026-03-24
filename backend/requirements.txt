@@ -6,11 +6,13 @@ financedatabase
 gunicorn
 huggingface-hub>=0.20.0
 django-ninja-jwt
+matplotlib
 numpy
 pandas
 pgvector
 psycopg2-binary
 redis
 requests
+seaborn
 scikit-learn
 sentence-transformers
