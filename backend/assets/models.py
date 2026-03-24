@@ -31,6 +31,8 @@ class Asset(models.Model):
     # Risk Metrics (Calculated)
     cluster_id = models.IntegerField(null=True, blank=True, help_text="KMeans cluster assignment")
     sigma_52 = models.FloatField(null=True, blank=True, help_text="Annualized volatility (52-week)")
+    cluster_x = models.FloatField(null=True, blank=True, help_text="PCA component 1 for visualization")
+    cluster_y = models.FloatField(null=True, blank=True, help_text="PCA component 2 for visualization")
 
     # For semantic search embeddings
     embedding = VectorField(dimensions=384, null=True, blank=True)

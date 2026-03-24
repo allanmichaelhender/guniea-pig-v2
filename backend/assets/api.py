@@ -6,7 +6,7 @@ from sentence_transformers import SentenceTransformer
 from assets.schemas import AssetSchema, SemanticSearchSchema
 
 
-router = Router()
+router = Router(tags=["assets"])
 
 # Lazy-load the model to avoid overhead if this process isn't serving requests
 # In a production environment, you might load this in apps.py ready() or a separate service

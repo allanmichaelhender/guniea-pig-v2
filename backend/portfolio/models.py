@@ -42,3 +42,7 @@ class Holding(models.Model):
 
     class Meta:
         unique_together = ("portfolio", "asset")
+
+    @property
+    def ticker(self):
+        return self.asset.ticker

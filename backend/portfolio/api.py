@@ -1,13 +1,12 @@
 from typing import List
 from ninja import Router
-from django.shortcuts import get_object_or_404
 from ninja_jwt.authentication import JWTAuth
 from .models import Portfolio, Holding
 from .schemas import PortfolioIn, PortfolioOut, SimulationResponse
 from .engine import calculate_portfolio_metrics
 from assets.models import Asset
 
-router = Router()
+router = Router(tags=["portfolios"])
 
 # --- Guest Routes ---
 
@@ -89,7 +88,16 @@ def create_portfolio(request, payload: PortfolioIn):
 
     Holding.objects.bulk_create(holdings_to_create)
 
-    return portfolio
-
-
-x
+    return {
+        "id": portfolio.id,
+        "is_public": portfolio.is_public,
+        "name": portfolio.name,
+        "description": portfolio.description,
+        "start_date": portfolio.start_date,
+        "holdings": payload.holdings,
+        "annualized_return": portfolio.annualized_return,
+        "volatility": portfolio.volatility,
+        "sharpe_ratio": portfolio.sharpe_ratio,
+        "max_drawdown": portfolio.max_drawdown,
+        "performance_history": portfolio.performance_history,
+    }

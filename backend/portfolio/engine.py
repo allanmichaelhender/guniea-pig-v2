@@ -56,7 +56,9 @@ def calculate_portfolio_metrics(
     actual_start_date = first_valid_dates.max()
 
     # Check if the actual start date is later than requested
-    if actual_start_date and actual_start_date > requested_start_date:
+    if actual_start_date and (actual_start_date - requested_start_date) >= timedelta(
+        days=7
+    ):
         # Identify which tickers caused the delay
         late_tickers = first_valid_dates[
             first_valid_dates == actual_start_date

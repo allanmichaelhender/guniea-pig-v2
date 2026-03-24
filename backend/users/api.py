@@ -5,7 +5,7 @@ from ninja_jwt.routers.obtain import obtain_pair_router
 from ninja_jwt.routers.verify import verify_router
 from .schemas import UserCreate, UserOut
 
-router = Router()
+router = Router(tags=["users"])
 
 # Mount JWT routes: /api/users/token/pair, /api/users/token/refresh, etc.
 router.add_router("/token", obtain_pair_router)
