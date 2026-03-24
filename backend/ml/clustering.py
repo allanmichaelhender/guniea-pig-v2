@@ -5,6 +5,7 @@ from sklearn.decomposition import PCA
 from sklearn.metrics import davies_bouldin_score
 from sklearn.preprocessing import StandardScaler, RobustScaler
 from assets.models import Asset, Price
+from ml.surge import calculate_surge_metrics
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy import stats
@@ -20,7 +21,6 @@ def run_risk_pipeline():
     print("Fetching price history...")
 
     # 1. Load Data
-    # Use asset__assetType to access the 'assetType' field in the related Asset table
     qs = Price.objects.exclude(asset__assetType="ETF").values(
         "asset_id", "date", "adj_close"
     )
@@ -34,7 +34,6 @@ def run_risk_pipeline():
     prices_df.sort_index(inplace=True)
 
     # 2. Calculate Weekly Log Returns
-    # ln(P_t / P_{t-1})
     log_returns = np.log(prices_df / prices_df.shift(1))
 
     # Drop the first row (NaN from shift)
@@ -43,7 +42,6 @@ def run_risk_pipeline():
     updates = {}  # asset_id -> {field: value}
 
     # --- Metric A: Sigma-52 (1-Year Volatility) ---
-    # Window = 52 weeks. Rolling std dev * sqrt(52).
     rolling_vol = log_returns.rolling(window=52).std() * np.sqrt(52)
     latest_vol = rolling_vol.iloc[-1]
 
@@ -51,17 +49,20 @@ def run_risk_pipeline():
         if not np.isnan(vol):
             updates[asset_id] = {"sigma_52": vol}
 
-        # --- Metric B: Hidden Risk Clustering ---
+    # --- Metric A.2: Volatility Surge ---
+    # Calculate Z-scores using the rolling vol dataframe we just made
+    surge_data = calculate_surge_metrics(rolling_vol)
+    for asset_id, metrics in surge_data.items():
+        updates[asset_id].update(metrics)
+
+    # --- Metric B: Hidden Risk Clustering ---
     lookback_window = 156
     recent_returns = log_returns.tail(lookback_window)
 
-    # 1. Thresh: Keep assets with at least 140 weeks of data (allows ~10% missing)
-    # 'thresh' counts non-NA values.
+    # 1. Threshold: Keep assets with at least 140 weeks of data
     min_weeks = 140
     cluster_data = recent_returns.dropna(axis=1, thresh=min_weeks)
 
-    # 2. Fill: Forward-fill the tiny gaps, then zero-fill any remaining start-of-series NaNs
-    # ffill() handles missing days in the middle; fillna(0) handles the very beginning.
     cluster_data = cluster_data.ffill().fillna(0)
 
     # Save the market mean return for detrending ETFs later (Market Beta)
@@ -70,12 +71,11 @@ def run_risk_pipeline():
     # Features Matrix: Rows = Assets, Columns = Weekly Returns
     X = cluster_data.T
 
-    # --- NEW: De-trending (Relative Returns) ---
-    # Subtract the mean return of all assets for each specific week (axis=0)
-    # This removes the "Market Beta" signal
+    # --- De-trending (Relative Returns) ---
+    # Subtract mean return of all assets for each week to remove "Market Beta"
     X_detrended = X.sub(X.mean(axis=0), axis=1)
 
-    # Now Scale the DE-TRENDED data
+    # Scale the de-trended data
     scaler = RobustScaler()
     X_scaled = pd.DataFrame(
         scaler.fit_transform(X_detrended), index=X.index, columns=X.columns
@@ -94,7 +94,7 @@ def run_risk_pipeline():
     # 1. Find the best K automatically
     best_k = 2
     best_score = -1
-    max_k = 20  # Don't try more clusters than you have assets
+    max_k = 20
 
     for k_test in range(2, max_k + 1):
         test_kmeans = KMeans(n_clusters=k_test, random_state=42, n_init=10)
@@ -113,7 +113,6 @@ def run_risk_pipeline():
     labels = kmeans.labels_
 
     # 2. PCA for 2D Map
-    # Project the high-dimensional return history into 2D coordinates
     pca = PCA(n_components=2, random_state=42)
     coords = pca.fit_transform(X_normal)
 
@@ -143,8 +142,7 @@ def run_risk_pipeline():
 
         etf_returns = np.log(etf_prices / etf_prices.shift(1)).tail(lookback_window)
 
-        # Align ETF columns (dates) to the Training Data (X) to ensure correct shape
-        # Reindex handles missing dates by filling NaN
+        # Align ETF columns (dates) to the Training Data (X)
         etf_aligned = etf_returns.reindex(cluster_data.index).ffill().fillna(0).T
 
         # Detrend ETFs using the MARKET MEAN from the stock universe
@@ -166,11 +164,7 @@ def run_risk_pipeline():
 
     # --- Phase 3: Classify Outliers using the Stock Model ---
     if not X_outliers.empty:
-        # Use the 'clean' scaler/model to transform the weirdos
-        # Note: X_outliers is already scaled, but we need to ensure it's handled if we re-used scaler?
-        # Actually X_outliers came from X_scaled which came from scaler.fit_transform.
-        # So X_outliers is ALREADY scaled. We just need to predict.
-
+        # Predict clusters for high-volatility assets using the model trained on normal assets
         outlier_labels = kmeans.predict(X_outliers)
         outlier_coords = pca.transform(X_outliers)
 
@@ -196,11 +190,23 @@ def run_risk_pipeline():
             asset.cluster_id = fields.get("cluster_id")
             asset.cluster_x = fields.get("cluster_x")
             asset.cluster_y = fields.get("cluster_y")
+            asset.volatility_z_score = fields.get("volatility_z_score")
+            asset.volatility_median = fields.get("volatility_median")
+            asset.is_volatility_surge = fields.get("is_volatility_surge", False)
             assets_to_update.append(asset)
 
     if assets_to_update:
         Asset.objects.bulk_update(
-            assets_to_update, ["sigma_52", "cluster_id", "cluster_x", "cluster_y"]
+            assets_to_update,
+            [
+                "sigma_52",
+                "cluster_id",
+                "cluster_x",
+                "cluster_y",
+                "volatility_z_score",
+                "volatility_median",
+                "is_volatility_surge",
+            ],
         )
 
     # 3. Create the debug plot (optional)

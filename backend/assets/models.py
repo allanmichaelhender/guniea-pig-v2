@@ -33,6 +33,11 @@ class Asset(models.Model):
     sigma_52 = models.FloatField(null=True, blank=True, help_text="Annualized volatility (52-week)")
     cluster_x = models.FloatField(null=True, blank=True, help_text="PCA component 1 for visualization")
     cluster_y = models.FloatField(null=True, blank=True, help_text="PCA component 2 for visualization")
+    
+    # Volatility Surge Metrics
+    volatility_z_score = models.FloatField(null=True, blank=True, help_text="Z-score of current vol vs 3y history")
+    volatility_median = models.FloatField(null=True, blank=True, help_text="3y median volatility (baseline)")
+    is_volatility_surge = models.BooleanField(default=False, help_text="True if Z-score > 2.0")
 
     # For semantic search embeddings
     embedding = VectorField(dimensions=384, null=True, blank=True)
