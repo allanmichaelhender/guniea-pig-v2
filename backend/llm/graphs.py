@@ -5,25 +5,13 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from langgraph.graph import StateGraph, END
 from assets.models import Asset
 
-
 def get_llm():
-    """
-    Initializes the Groq LLM client.
-    """
     api_key = os.environ.get("GROQ_API_KEY")
     if not api_key:
-        # Fallback or error handling for missing key
         print("WARNING: GROQ_API_KEY not found. LLM features will fail.")
         return None
 
-    # Using Llama3 70b for high quality reasoning
     return ChatGroq(temperature=0.5, model_name="llama-3.3-70b-versatile", api_key=api_key)
-
-
-# ==========================================
-# Feature 1: Portfolio Analysis Graph
-# ==========================================
-
 
 class PortfolioAnalysisState(TypedDict):
     holdings: List[Dict[str, Any]]  # List of {ticker, weight}
@@ -33,9 +21,6 @@ class PortfolioAnalysisState(TypedDict):
 
 
 def fetch_asset_context(state: PortfolioAnalysisState):
-    """
-    Node: Queries the database for details on the assets in the portfolio.
-    """
     holdings = state["holdings"]
     tickers = [h["ticker"] for h in holdings]
 
@@ -64,9 +49,6 @@ def fetch_asset_context(state: PortfolioAnalysisState):
 
 
 def generate_portfolio_narrative(state: PortfolioAnalysisState):
-    """
-    Node: Calls the LLM to generate the analysis.
-    """
     llm = get_llm()
     if not llm:
         return {"analysis": "Error: LLM service not configured."}
@@ -75,7 +57,7 @@ def generate_portfolio_narrative(state: PortfolioAnalysisState):
     context = state["asset_context"]
 
     prompt = f"""
-    You are 'Grok', a sophisticated financial risk assistant for the 'Guniea Pig Portfolio' platform.
+    You are a sophisticated financial risk assistant for the 'Guniea Pig Portfolio' platform.
     Analyze the following portfolio simulation results.
 
     PORTFOLIO METRICS:
@@ -115,23 +97,16 @@ portfolio_builder.add_edge("analyze", END)
 portfolio_graph = portfolio_builder.compile()
 
 
-# ==========================================
-# Feature 2: Smart Search Graph
-# ==========================================
-
-
 class SmartSearchState(TypedDict):
     user_prompt: str
     optimized_query: Optional[str]
 
 
 def optimize_search_query(state: SmartSearchState):
-    """
-    Node: Converts user natural language into a semantic search query.
-    """
     llm = get_llm()
+
+    # If llm is not working we return the user prompt string without changes
     if not llm:
-        # Fallback to raw prompt if LLM is down
         return {"optimized_query": state["user_prompt"]}
 
     prompt = f"""
@@ -141,6 +116,7 @@ def optimize_search_query(state: SmartSearchState):
     """
 
     response = llm.invoke([HumanMessage(content=prompt)])
+    print(response.content)
     return {"optimized_query": response.content.strip()}
 
 
