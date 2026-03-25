@@ -21,9 +21,8 @@ def run_risk_pipeline():
     print("Fetching price history...")
 
     # 1. Load Data
-    qs = Price.objects.exclude(asset__assetType="ETF").values(
-        "asset_id", "date", "adj_close"
-    )
+    # Load ALL assets to ensure we calculate metrics for ETFs too
+    qs = Price.objects.all().values("asset_id", "date", "adj_close")
     df = pd.DataFrame.from_records(qs)
 
     if df.empty:
@@ -42,7 +41,8 @@ def run_risk_pipeline():
     updates = {}  # asset_id -> {field: value}
 
     # --- Metric A: Sigma-52 (1-Year Volatility) ---
-    rolling_vol = log_returns.rolling(window=52).std() * np.sqrt(52)
+    # Use min_periods=40 to handle holidays/missing data without returning NaN
+    rolling_vol = log_returns.rolling(window=52, min_periods=40).std() * np.sqrt(52)
     latest_vol = rolling_vol.iloc[-1]
 
     for asset_id, vol in latest_vol.items():
@@ -52,7 +52,11 @@ def run_risk_pipeline():
     # --- Metric A.2: Volatility Surge ---
     # Calculate Z-scores using the rolling vol dataframe we just made
     surge_data = calculate_surge_metrics(rolling_vol)
+    print(surge_data)
+
     for asset_id, metrics in surge_data.items():
+        if asset_id not in updates:
+            updates[asset_id] = {}
         updates[asset_id].update(metrics)
 
     # --- Metric B: Hidden Risk Clustering ---
@@ -65,11 +69,21 @@ def run_risk_pipeline():
 
     cluster_data = cluster_data.ffill().fillna(0)
 
-    # Save the market mean return for detrending ETFs later (Market Beta)
-    market_mean_returns = cluster_data.mean(axis=1)
+    # Identify ETFs to separate them from training data
+    # We want to train clustering on STOCKS only, then project ETFs
+    etf_tickers = set(
+        Asset.objects.filter(assetType="ETF").values_list("ticker", flat=True)
+    )
+
+    is_etf_col = cluster_data.columns.isin(etf_tickers)
+    cluster_stocks = cluster_data.loc[:, ~is_etf_col]
+    cluster_etfs = cluster_data.loc[:, is_etf_col]
+
+    # Save the MARKET (Stock) mean return for detrending
+    market_mean_returns = cluster_stocks.mean(axis=1)
 
     # Features Matrix: Rows = Assets, Columns = Weekly Returns
-    X = cluster_data.T
+    X = cluster_stocks.T
 
     # --- De-trending (Relative Returns) ---
     # Subtract mean return of all assets for each week to remove "Market Beta"
@@ -86,97 +100,91 @@ def run_risk_pipeline():
     X_outliers = X_scaled[z_scores >= 1]
 
     n_clustered = 0
+    can_cluster = True
 
     # We train the model ONLY on "Normal" assets (low vol/z-score) to get stable clusters
     if X_normal.empty or len(X_normal) < 5:
-        return {"status": "error", "message": "Not enough data for clustering."}
+        print(
+            "Warning: Not enough data for clustering. Risk metrics will be saved without clusters."
+        )
+        can_cluster = False
 
-    # 1. Find the best K automatically
-    best_k = 2
-    best_score = -1
-    max_k = 20
+    if can_cluster:
+        # 1. Find the best K automatically
+        best_k = 2
+        best_score = -1
+        max_k = min(20, len(X_normal) - 1)  # Ensure K is less than sample size
 
-    for k_test in range(2, max_k + 1):
-        test_kmeans = KMeans(n_clusters=k_test, random_state=42, n_init=10)
-        test_labels = test_kmeans.fit_predict(X_normal)
+        for k_test in range(2, max_k + 1):
+            test_kmeans = KMeans(n_clusters=k_test, random_state=42, n_init=10)
+            test_labels = test_kmeans.fit_predict(X_normal)
 
-        # Davies-Bouldin score: lower is better
-        score = davies_bouldin_score(X_normal, test_labels)
-        if score < best_score or best_score == -1:
-            best_score = score
-            best_k = k_test
+            # Davies-Bouldin score: lower is better
+            score = davies_bouldin_score(X_normal, test_labels)
+            if score < best_score or best_score == -1:
+                best_score = score
+                best_k = k_test
 
-    print(f"Optimal clusters found: {best_k} (Score: {best_score:.3f})")
+        print(f"Optimal clusters found: {best_k} (Score: {best_score:.3f})")
 
-    kmeans = KMeans(n_clusters=best_k, random_state=42, n_init=10)
-    kmeans.fit(X_normal)
-    labels = kmeans.labels_
+        kmeans = KMeans(n_clusters=best_k, random_state=42, n_init=10)
+        kmeans.fit(X_normal)
+        labels = kmeans.labels_
 
-    # 2. PCA for 2D Map
-    pca = PCA(n_components=2, random_state=42)
-    coords = pca.fit_transform(X_normal)
+        # 2. PCA for 2D Map
+        pca = PCA(n_components=2, random_state=42)
+        coords = pca.fit_transform(X_normal)
 
-    # Map back to asset IDs
-    for i, asset_id in enumerate(X_normal.index):
-        if asset_id not in updates:
-            updates[asset_id] = {}
-
-        updates[asset_id]["cluster_id"] = int(labels[i])
-        updates[asset_id]["cluster_x"] = float(coords[i, 0])
-        updates[asset_id]["cluster_y"] = float(coords[i, 1])
-
-    n_clustered += len(X_normal)
-
-    # --- Phase 2: Classify ETFs using the Stock Model ---
-    print("Classifying ETFs...")
-    etf_qs = Price.objects.filter(asset__assetType="ETF").values(
-        "asset_id", "date", "adj_close"
-    )
-    etf_df_raw = pd.DataFrame.from_records(etf_qs)
-
-    if not etf_df_raw.empty:
-        # 1. Pivot and calculate returns exactly like stocks
-        etf_prices = etf_df_raw.pivot(
-            index="date", columns="asset_id", values="adj_close"
-        ).sort_index()
-
-        etf_returns = np.log(etf_prices / etf_prices.shift(1)).tail(lookback_window)
-
-        # Align ETF columns (dates) to the Training Data (X)
-        etf_aligned = etf_returns.reindex(cluster_data.index).ffill().fillna(0).T
-
-        # Detrend ETFs using the MARKET MEAN from the stock universe
-        # This puts ETFs in the same relative space as the stocks
-        etf_detrended = etf_aligned.sub(market_mean_returns, axis=1)
-
-        # 2. Project into existing space (Use transform, NOT fit)
-        etf_scaled = scaler.transform(etf_detrended)
-        etf_labels = kmeans.predict(etf_scaled)
-        etf_coords = pca.transform(etf_scaled)
-
-        # 3. Add to updates dictionary
-        for i, asset_id in enumerate(etf_aligned.index):
+        # Map back to asset IDs
+        for i, asset_id in enumerate(X_normal.index):
             if asset_id not in updates:
                 updates[asset_id] = {}
-            updates[asset_id]["cluster_id"] = int(etf_labels[i])
-            updates[asset_id]["cluster_x"] = float(etf_coords[i, 0])
-            updates[asset_id]["cluster_y"] = float(etf_coords[i, 1])
 
-    # --- Phase 3: Classify Outliers using the Stock Model ---
-    if not X_outliers.empty:
-        # Predict clusters for high-volatility assets using the model trained on normal assets
-        outlier_labels = kmeans.predict(X_outliers)
-        outlier_coords = pca.transform(X_outliers)
+            updates[asset_id]["cluster_id"] = int(labels[i])
+            updates[asset_id]["cluster_x"] = float(coords[i, 0])
+            updates[asset_id]["cluster_y"] = float(coords[i, 1])
 
-        # 4. Add to the same updates dictionary
-        for i, asset_id in enumerate(X_outliers.index):
-            if asset_id not in updates:
-                updates[asset_id] = {}
-            updates[asset_id]["cluster_id"] = int(outlier_labels[i])
-            updates[asset_id]["cluster_x"] = float(outlier_coords[i, 0])
-            updates[asset_id]["cluster_y"] = float(outlier_coords[i, 1])
+        n_clustered += len(X_normal)
 
-        n_clustered += len(X_outliers)
+        # --- Phase 2: Classify ETFs using the Stock Model ---
+        if not cluster_etfs.empty:
+            print(f"Classifying {len(cluster_etfs.columns)} ETFs...")
+
+            # ETF Returns (already aligned from cluster_data)
+            etf_aligned = cluster_etfs.T
+
+            # Detrend ETFs using the MARKET MEAN from the stock universe
+            # This puts ETFs in the same relative space as the stocks
+            etf_detrended = etf_aligned.sub(market_mean_returns, axis=1)
+
+            # 2. Project into existing space (Use transform, NOT fit)
+            etf_scaled = scaler.transform(etf_detrended)
+            etf_labels = kmeans.predict(etf_scaled)
+            etf_coords = pca.transform(etf_scaled)
+
+            # 3. Add to updates dictionary
+            for i, asset_id in enumerate(etf_aligned.index):
+                if asset_id not in updates:
+                    updates[asset_id] = {}
+                updates[asset_id]["cluster_id"] = int(etf_labels[i])
+                updates[asset_id]["cluster_x"] = float(etf_coords[i, 0])
+                updates[asset_id]["cluster_y"] = float(etf_coords[i, 1])
+
+        # --- Phase 3: Classify Outliers using the Stock Model ---
+        if not X_outliers.empty:
+            # Predict clusters for high-volatility assets using the model trained on normal assets
+            outlier_labels = kmeans.predict(X_outliers)
+            outlier_coords = pca.transform(X_outliers)
+
+            # 4. Add to the same updates dictionary
+            for i, asset_id in enumerate(X_outliers.index):
+                if asset_id not in updates:
+                    updates[asset_id] = {}
+                updates[asset_id]["cluster_id"] = int(outlier_labels[i])
+                updates[asset_id]["cluster_x"] = float(outlier_coords[i, 0])
+                updates[asset_id]["cluster_y"] = float(outlier_coords[i, 1])
+
+            n_clustered += len(X_outliers)
 
     # 3. Save to DB
     print("Saving results to database...")
@@ -210,23 +218,24 @@ def run_risk_pipeline():
         )
 
     # 3. Create the debug plot (optional)
-    plt.figure(figsize=(10, 7))
-    # Plot the normal clusters
-    sns.scatterplot(
-        x=coords[:, 0],
-        y=coords[:, 1],
-        hue=labels,
-        palette="viridis",
-        s=100,
-        alpha=0.7,
-    )
+    if can_cluster:
+        plt.figure(figsize=(10, 7))
+        # Plot the normal clusters
+        sns.scatterplot(
+            x=coords[:, 0],
+            y=coords[:, 1],
+            hue=labels,
+            palette="viridis",
+            s=100,
+            alpha=0.7,
+        )
 
-    plt.title("Asset Risk Map (De-trended & Scaled)")
-    plt.xlabel("PC1 (Primary Trend)")
-    plt.ylabel("PC2 (Secondary Trend)")
-    plt.grid(True, linestyle="--", alpha=0.6)
-    plt.savefig("risk_map.png", bbox_inches="tight")
-    print("Plot saved as risk_map.png")
+        plt.title("Asset Risk Map (De-trended & Scaled)")
+        plt.xlabel("PC1 (Primary Trend)")
+        plt.ylabel("PC2 (Secondary Trend)")
+        plt.grid(True, linestyle="--", alpha=0.6)
+        plt.savefig("risk_map.png", bbox_inches="tight")
+        print("Plot saved as risk_map.png")
 
     return {
         "status": "success",

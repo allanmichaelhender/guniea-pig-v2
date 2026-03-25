@@ -44,7 +44,8 @@ INSTALLED_APPS = [
     "portfolio",
     "api",
     "ml",
-    "tasks",
+    "llm",
+    "users",
     "ninja_jwt",
     "ninja",
 ]

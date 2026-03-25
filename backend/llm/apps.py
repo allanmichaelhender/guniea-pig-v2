@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class TasksConfig(AppConfig):
+class LlmConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'tasks'
+    name = 'llm'
