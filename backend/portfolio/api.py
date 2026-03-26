@@ -5,6 +5,7 @@ from .models import Portfolio, Holding
 from .schemas import PortfolioIn, PortfolioOut, SimulationResponse
 from .engine import calculate_portfolio_metrics
 from assets.models import Asset
+from llm.graphs import portfolio_graph
 
 router = Router(tags=["portfolios"])
 
@@ -24,6 +25,19 @@ def simulate_portfolio(request, payload: PortfolioIn):
         results = calculate_portfolio_metrics(
             holdings_data, start_date=payload.start_date
         )
+
+        # Enrich with AI Narrative if calculation was successful
+        if results.get("status") == "success":
+            initial_state = {
+                "holdings": holdings_data,
+                "metrics": results["metrics"],
+                "asset_context": None,
+                "analysis": None,
+            }
+            # invoke() runs the fetch_context and analyze nodes in sequence
+            graph_output = portfolio_graph.invoke(initial_state)
+            results["narrative"] = graph_output.get("analysis")
+
         return results
     except ValueError as e:
         # in a real app, use 422 or 400 response code

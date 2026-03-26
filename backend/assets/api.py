@@ -35,7 +35,7 @@ def list_assets(
 
 @router.get("/ticker-search", response=List[AssetSchema])
 def search_tickers(request, q: str = Query(..., min_length=1)):
-    # Filter for base assets only, case-insensitive match, limit 10
+    # Filter for base assets only, case-insensitive match, limit 5
     return Asset.objects.filter(is_base_asset=True, ticker__icontains=q)[:5]
 
 

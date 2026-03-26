@@ -1,4 +1,5 @@
 Django>=4.2
+django-cors-headers
 django-ninja
 django-q2
 djangorestframework

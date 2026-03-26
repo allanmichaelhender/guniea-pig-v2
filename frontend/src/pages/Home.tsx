@@ -1,8 +1,9 @@
-import React, { useState } from "react";
-import PortfolioBuilder from "../components/PortfolioBuilder";
-import PortfolioAnalyzer from "../components/PortfolioAnalyzer";
-import { LineChart, LogIn, Sun, Moon } from "lucide-react";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import PortfolioBuilder from "@/components/PortfolioBuilder";
+import PortfolioAnalyzer from "@/components/PortfolioAnalyzer";
+import { LineChart, LogIn, LogOut, Sun, Moon, User } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { authService } from "@/services/auth";
 
 interface HomeProps {
   theme: "dark" | "light";
@@ -11,7 +12,16 @@ interface HomeProps {
 
 const Home = ({ theme, setTheme }: HomeProps) => {
   const [simulationResult, setSimulationResult] = useState<any>(null);
+  const [username, setUsername] = useState<string | null>(
+    localStorage.getItem("username"),
+  );
+  const navigate = useNavigate();
+
   const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
+  const handleLogout = () => {
+    authService.logout();
+    setUsername(null);
+  };
 
   return (
     <div className="flex flex-col h-screen">
@@ -37,13 +47,26 @@ const Home = ({ theme, setTheme }: HomeProps) => {
               <Moon className="w-5 h-5" />
             )}
           </button>
-          <Link
-            to="/auth"
-            className="flex items-center gap-2 text-sm font-medium text-slate-300 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
-          >
-            <LogIn className="w-4 h-4" />
-            Login / Register
-          </Link>
+          {username ? (
+            <div className="flex items-center gap-4">
+              <span className="flex items-center gap-2 text-sm font-medium text-slate-400">
+                <User className="w-4 h-4" /> {username}
+              </span>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 text-sm font-medium text-red-500 hover:text-red-600 transition-colors"
+              >
+                <LogOut className="w-4 h-4" /> Logout
+              </button>
+            </div>
+          ) : (
+            <Link
+              to="/auth"
+              className="flex items-center gap-2 text-sm font-medium text-slate-300 hover:text-indigo-400 transition-colors"
+            >
+              <LogIn className="w-4 h-4" /> Login / Register
+            </Link>
+          )}
         </div>
       </header>
 

@@ -18,7 +18,7 @@ const PortfolioBuilder = ({ onSimulationComplete }: PortfolioBuilderProps) => {
   const handleSearch = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setQuery(val);
-    if (val.length > 1) {
+    if (val.length >= 1) {
       const results = await assetService.searchTickers(val);
       setSearchResults(results);
     } else {

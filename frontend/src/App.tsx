@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
-import Home from "./pages/Home";
-import Auth from "./pages/Auth";
+import Home from "@/pages/Home";
+import Auth from "@/pages/Auth";
 
 function App() {
   const [theme, setTheme] = useState<"dark" | "light">(

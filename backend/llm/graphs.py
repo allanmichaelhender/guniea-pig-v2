@@ -5,13 +5,17 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from langgraph.graph import StateGraph, END
 from assets.models import Asset
 
+
 def get_llm():
     api_key = os.environ.get("GROQ_API_KEY")
     if not api_key:
         print("WARNING: GROQ_API_KEY not found. LLM features will fail.")
         return None
 
-    return ChatGroq(temperature=0.5, model_name="llama-3.3-70b-versatile", api_key=api_key)
+    return ChatGroq(
+        temperature=0.5, model_name="llama-3.3-70b-versatile", api_key=api_key
+    )
+
 
 class PortfolioAnalysisState(TypedDict):
     holdings: List[Dict[str, Any]]  # List of {ticker, weight}
@@ -27,23 +31,33 @@ def fetch_asset_context(state: PortfolioAnalysisState):
     # Fetch assets with relevant risk/sector info
     assets = Asset.objects.filter(ticker__in=tickers)
     asset_map = {a.ticker: a for a in assets}
-
     context_lines = []
+
     for h in holdings:
         ticker = h["ticker"]
-        weight = h["weight"] * 100
+        weight = (h.get("weight") or 0.0) * 100
         asset = asset_map.get(ticker)
 
         if asset:
+            # Ensure numeric fields are not None before applying float formatting
+            cx = asset.cluster_x if asset.cluster_x is not None else 0.0
+            cy = asset.cluster_y if asset.cluster_y is not None else 0.0
+            vz = (
+                asset.volatility_z_score
+                if asset.volatility_z_score is not None
+                else 0.0
+            )
+
             info = (
                 f"- {ticker} ({weight:.1f}%): {asset.name}. "
                 f"Sector: {asset.sector}, Industry: {asset.industry}. "
-                f"Risk Cluster: {asset.cluster_id} (x={asset.cluster_x:.2f}, y={asset.cluster_y:.2f}). "
-                f"Vol Surge: {asset.is_volatility_surge} (Z: {asset.volatility_z_score})."
+                f"Risk Cluster: {asset.cluster_id or 'N/A'} (x={cx:.2f}, y={cy:.2f}). "
+                f"Vol Surge: {asset.is_volatility_surge} (Z: {vz:.2f})."
             )
-            context_lines.append(info)
         else:
-            context_lines.append(f"- {ticker} ({weight:.1f}%): Metadata not found.")
+            info = f"- {ticker} ({weight:.1f}%): Metadata not found."
+
+        context_lines.append(info)
 
     return {"asset_context": "\n".join(context_lines)}
 
@@ -56,15 +70,16 @@ def generate_portfolio_narrative(state: PortfolioAnalysisState):
     metrics = state["metrics"]
     context = state["asset_context"]
 
+    # Use "or 0" inside the format block to prevent NoneType formatting errors
     prompt = f"""
     You are a sophisticated financial risk assistant for the 'Guniea Pig Portfolio' platform.
     Analyze the following portfolio simulation results.
 
     PORTFOLIO METRICS:
-    - Annualized Return: {metrics.get("annualized_return", 0):.2%}
-    - Volatility (Sigma-52): {metrics.get("volatility", 0):.2%}
-    - Sharpe Ratio: {metrics.get("sharpe_ratio", 0):.2f}
-    - Max Drawdown: {metrics.get("max_drawdown", 0):.2%}
+    - Annualized Return: {metrics.get("annualized_return") or 0:.2%}
+    - Volatility (Sigma-52): {metrics.get("volatility") or 0:.2%}
+    - Sharpe Ratio: {metrics.get("sharpe_ratio") or 0:.2f}
+    - Max Drawdown: {metrics.get("max_drawdown") or 0:.2%}
 
     ASSET BREAKDOWN & RISK CONTEXT:
     {context}
