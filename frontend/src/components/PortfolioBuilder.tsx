@@ -51,6 +51,15 @@ const PortfolioBuilder = ({ onSimulationComplete }: PortfolioBuilderProps) => {
   };
 
   const addAsset = (asset: Asset) => {
+    const token = localStorage.getItem("token");
+
+    if (!asset.is_base_asset && !token) {
+      alert(
+        "This asset is restricted to logged-in users. Please log in or register to include it in your simulation.",
+      );
+      return;
+    }
+
     if (!holdings.find((h) => h.ticker === asset.ticker)) {
       const newWeight = holdings.length === 0 ? 1 : 0;
       setHoldings([...holdings, { ticker: asset.ticker, weight: newWeight }]);
@@ -117,24 +126,45 @@ const PortfolioBuilder = ({ onSimulationComplete }: PortfolioBuilderProps) => {
               <input
                 type="text"
                 className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:border-transparent outline-none transition-colors"
-                placeholder="Ticker search (e.g. AAPL, SPY) - Log in for more options."
+                placeholder="Ticker search (e.g. AAPL, SPY) - Log in for access to all assets."
                 value={query}
                 onChange={handleSearch}
               />
               {searchResults.length > 0 && (
                 <div className="absolute z-10 w-full mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg overflow-hidden border-t-4 border-t-slate-100">
-                  {searchResults.map((asset) => (
-                    <button
-                      key={asset.ticker}
-                      onClick={() => addAsset(asset)}
-                      className="w-full px-4 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 flex justify-between transition-colors"
-                    >
-                      <span className="font-bold">{asset.ticker}</span>
-                      <span className="text-slate-500 text-sm">
-                        {asset.name}
-                      </span>
-                    </button>
-                  ))}
+                  {searchResults.map((asset) => {
+                    const isRestricted =
+                      !asset.is_base_asset && !localStorage.getItem("token");
+                    return (
+                      <button
+                        key={asset.ticker}
+                        onClick={() => addAsset(asset)}
+                        className={`w-full px-4 py-2 text-left flex justify-between transition-colors border-t border-slate-50 dark:border-slate-700/50 first:border-none
+                          ${isRestricted ? "opacity-60 cursor-not-allowed bg-slate-50/50 dark:bg-slate-900/50" : "hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100"}`}
+                      >
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold">{asset.ticker}</span>
+                            {asset.is_base_asset ? (
+                              <span className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-tighter">
+                                Base Asset
+                              </span>
+                            ) : (
+                              <span className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-tighter">
+                                Logged in only
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-slate-400 text-[10px] uppercase font-medium truncate max-w-[200px]">
+                            {asset.name}
+                          </span>
+                        </div>
+                        <span className="text-slate-500 text-xs self-center">
+                          {asset.name}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -153,7 +183,7 @@ const PortfolioBuilder = ({ onSimulationComplete }: PortfolioBuilderProps) => {
               <textarea
                 rows={3}
                 className="w-full pl-10 pr-4 py-3 bg-indigo-50/30 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-slate-100 placeholder-indigo-400 dark:placeholder-indigo-400 focus:border-transparent outline-none transition-colors resize-none"
-                placeholder="Describe an asset (e.g. 'Show me high-growth semiconductor stocks based in South East Asia')"
+                placeholder="Describe an asset (e.g. 'Show me high-growth semiconductor stocks based in South East Asia') - Log in for for access for all assets."
                 value={smartQuery}
                 onChange={(e) => setSmartQuery(e.target.value)}
                 onKeyDown={handleSmartSearch}
@@ -163,30 +193,39 @@ const PortfolioBuilder = ({ onSimulationComplete }: PortfolioBuilderProps) => {
                   <div className="px-4 py-1.5 bg-indigo-50/50 dark:bg-indigo-900/20 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
                     Top Results
                   </div>
-                  {smartSearchResults.map((asset) => (
-                    <button
-                      key={asset.ticker}
-                      onClick={() => addAsset(asset)}
-                      className="w-full px-4 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 flex justify-between transition-colors border-t border-slate-50 dark:border-slate-700/50 first:border-none"
-                    >
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold">{asset.ticker}</span>
-                          {asset.is_base_asset && (
-                            <span className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-tighter">
-                              Base Asset
-                            </span>
-                          )}
+                  {smartSearchResults.map((asset) => {
+                    const isRestricted =
+                      !asset.is_base_asset && !localStorage.getItem("token");
+                    return (
+                      <button
+                        key={asset.ticker}
+                        onClick={() => addAsset(asset)}
+                        className={`w-full px-4 py-2 text-left flex justify-between transition-colors border-t border-slate-50 dark:border-slate-700/50 first:border-none
+                          ${isRestricted ? "opacity-60 cursor-not-allowed bg-slate-50/50 dark:bg-slate-900/50" : "hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100"}`}
+                      >
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold">{asset.ticker}</span>
+                            {asset.is_base_asset ? (
+                              <span className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-tighter">
+                                Base Asset
+                              </span>
+                            ) : (
+                              <span className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-tighter">
+                                Logged in only
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-slate-400 text-[10px] uppercase font-medium">
+                            {asset.sector}
+                          </span>
                         </div>
-                        <span className="text-slate-400 text-[10px] uppercase font-medium">
-                          {asset.sector}
+                        <span className="text-slate-500 text-xs text-right max-w-[150px] truncate">
+                          {asset.name}
                         </span>
-                      </div>
-                      <span className="text-slate-500 text-xs text-right max-w-[150px] truncate">
-                        {asset.name}
-                      </span>
-                    </button>
-                  ))}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>

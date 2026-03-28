@@ -4,9 +4,25 @@ from assets.models import Asset
 from pgvector.django import CosineDistance
 from sentence_transformers import SentenceTransformer
 from assets.schemas import AssetSchema, SemanticSearchSchema
+from ninja_jwt.authentication import JWTAuth
 
 
 router = Router(tags=["assets"])
+
+
+class JWTAuthSoft(JWTAuth):
+    def authenticate(self, request, key):
+        try:
+            return super().authenticate(request, key)
+        except Exception:
+            return None
+
+
+class TickerSearchAssetSchema(AssetSchema):
+    """Ensures is_base_asset is included for the frontend badge logic."""
+
+    is_base_asset: bool
+
 
 # Lazy-load the model to avoid overhead if this process isn't serving requests
 # In a production environment, you might load this in apps.py ready() or a separate service
@@ -33,10 +49,20 @@ def list_assets(
     return qs[offset : offset + limit]
 
 
-@router.get("/ticker-search", response=List[AssetSchema])
+@router.get(
+    "/ticker-search",
+    auth=[JWTAuthSoft(), lambda r: True],
+    response=List[TickerSearchAssetSchema],
+)
 def search_tickers(request, q: str = Query(..., min_length=1)):
-    # Filter for base assets only, case-insensitive match, limit 5
-    return Asset.objects.filter(is_base_asset=True, ticker__icontains=q)[:5]
+    # Determine auth status - guests only see base assets
+    is_authenticated = request.auth is not True
+
+    queryset = Asset.objects.all()
+    if not is_authenticated:
+        queryset = queryset.filter(is_base_asset=True)
+
+    return queryset.filter(ticker__icontains=q).order_by("-is_base_asset", "ticker")[:5]
 
 
 @router.post("/semantic-search", response=List[AssetSchema])

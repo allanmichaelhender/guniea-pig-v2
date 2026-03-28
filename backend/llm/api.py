@@ -28,7 +28,17 @@ class JWTAuthSoft(JWTAuth):
             return None
 
 
-@router.post("/analyze", auth=[JWTAuthSoft(), None], response=AnalysisResponse)
+class SmartSearchAssetSchema(AssetSchema):
+    """
+    Extends the base AssetSchema to include the is_base_asset flag for the frontend.
+    """
+
+    is_base_asset: bool
+
+
+@router.post(
+    "/analyze", auth=[JWTAuthSoft(), lambda r: True], response=AnalysisResponse
+)
 def analyze_portfolio(request, payload: PortfolioIn):
     """
     Generates an LLM-powered analysis of the portfolio.
@@ -60,13 +70,17 @@ def analyze_portfolio(request, payload: PortfolioIn):
     return {"analysis": result.get("analysis", "No analysis generated.")}
 
 
-@router.post("/smart-search", auth=[JWTAuthSoft(), None], response=List[AssetSchema])
+@router.post(
+    "/smart-search",
+    auth=[JWTAuthSoft(), lambda r: True],
+    response=List[SmartSearchAssetSchema],
+)
 def smart_search(request, payload: SmartSearchRequest):
     """
     Uses LLM to convert a natural language description into a vector search query.
     """
     # Determine auth status - guests only see base assets
-    is_authenticated = request.auth is not None
+    is_authenticated = request.auth is not True
 
     # 1. Optimize Query via LangGraph
     result = search_graph.invoke({"user_prompt": payload.prompt})
