@@ -1,4 +1,5 @@
 from ninja import Router
+from ninja_jwt.authentication import JWTAuth
 from portfolio.schemas import PortfolioIn
 from portfolio.engine import calculate_portfolio_metrics
 from llm.graphs import portfolio_graph
@@ -14,7 +15,20 @@ from assets.api import get_embedding_model
 router = Router(tags=["llm"])
 
 
-@router.post("/analyze", auth=None, response=AnalysisResponse)
+class JWTAuthSoft(JWTAuth):
+    """
+    A 'Soft' JWT authenticator that allows invalid/expired tokens to
+    fall through to the next authentication method (None) instead of raising 401.
+    """
+
+    def authenticate(self, request, key):
+        try:
+            return super().authenticate(request, key)
+        except Exception:
+            return None
+
+
+@router.post("/analyze", auth=[JWTAuthSoft(), None], response=AnalysisResponse)
 def analyze_portfolio(request, payload: PortfolioIn):
     """
     Generates an LLM-powered analysis of the portfolio.
@@ -46,25 +60,30 @@ def analyze_portfolio(request, payload: PortfolioIn):
     return {"analysis": result.get("analysis", "No analysis generated.")}
 
 
-@router.post("/smart-search", response=List[AssetSchema])
+@router.post("/smart-search", auth=[JWTAuthSoft(), None], response=List[AssetSchema])
 def smart_search(request, payload: SmartSearchRequest):
     """
     Uses LLM to convert a natural language description into a vector search query.
     """
+    # Determine auth status - guests only see base assets
+    is_authenticated = request.auth is not None
+
     # 1. Optimize Query via LangGraph
     result = search_graph.invoke({"user_prompt": payload.prompt})
     optimized_query = result.get("optimized_query", payload.prompt)
 
-    # 2. Perform Standard Semantic Search with the optimized query
-    # Delegate to the existing logic helper or logic pattern
-    # We construct a synthetic payload to reuse the logic or just repeat it
+    # 2. Perform Standard Semantic Search
     model = get_embedding_model()
     query_vector = model.encode(optimized_query).tolist()
 
-    qs = (
-        Asset.objects.filter(embedding__isnull=False)
-        .alias(distance=CosineDistance("embedding", query_vector))
-        .order_by("distance")[: payload.limit]
-    )
+    queryset = Asset.objects.filter(embedding__isnull=False)
+
+    if not is_authenticated:
+        queryset = queryset.filter(is_base_asset=True)
+
+    # Sort: Base Assets first, then by semantic distance
+    qs = queryset.alias(distance=CosineDistance("embedding", query_vector)).order_by(
+        "-is_base_asset", "distance"
+    )[: payload.limit]
 
     return qs

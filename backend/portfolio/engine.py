@@ -125,6 +125,7 @@ def calculate_portfolio_metrics(
             "actual_start_date": actual_start_date.strftime("%Y-%m-%d")
             if actual_start_date
             else None,
+            "holdings": holdings,
             "warnings": warnings,
         },
     }

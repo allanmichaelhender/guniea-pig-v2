@@ -85,11 +85,14 @@ def generate_portfolio_narrative(state: PortfolioAnalysisState):
     {context}
 
     INSTRUCTIONS:
-    1. Highlight the primary drivers of performance and risk.
-    2. Identify if the portfolio is concentrated in specific sectors or "hidden risk" clusters.
-    3. Note any assets currently experiencing a volatility surge.
-    4. Keep the tone professional, insightful, but accessible. 
-    5. Disclaimer: Remind the user this is a simulation, not financial advice.
+    1. **Structure**: Use exactly "### Section Name" for headers and "* Point" for bullets.
+    2. **Brevity**: Keep the analysis under 150 words total. Focus strictly on the "why" behind the numbers.
+    3. **Analysis**: Focus on sector/cluster concentration and primary risk drivers.
+    4. **Surges**: Only report on volatility surges if `Vol Surge: True` is in the context.
+    5. **Conclusion**: In the "### Conclusion" section, provide a concise final takeaway regarding the portfolio's risk posture.
+    6. **Tone**: Institutional and direct.
+    7. **No Bolding**: Do not use double asterisks (**) for bolding inside headers or bullets.
+    8. **Disclaimer**: Finish the entire response with: "Disclaimer: This is a simulation for research purposes, not financial advice."
     """
 
     response = llm.invoke(

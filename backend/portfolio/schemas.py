@@ -57,3 +57,4 @@ class SimulationResponse(Schema):
     metrics: Dict[str, float]
     performance_chart: List[Dict[str, Any]]
     simulation_metadata: Dict[str, Any]
+    narrative: Optional[str] = None

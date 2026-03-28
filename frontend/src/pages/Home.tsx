@@ -31,7 +31,7 @@ const Home = ({ theme, setTheme }: HomeProps) => {
           <div className="bg-indigo-500 p-1.5 rounded-lg">
             <LineChart className="text-white w-5 h-5" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-300">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-500 dark:text-slate-300">
             GUINEA PIG <span className="text-indigo-500">PORTFOLIO</span>
           </h1>
         </div>
