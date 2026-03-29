@@ -27,7 +27,7 @@ SECRET_KEY = "django-insecure-change-this-in-production"
 DEBUG = True
 
 # Add localhost for local dev and your EC2 IP/Domain for prod
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "backend", "nginx"]
 
 
 # Application definition
@@ -44,12 +44,10 @@ INSTALLED_APPS = [
     "django_q",
     "assets",
     "portfolio",
-    "api",
     "ml",
     "llm",
     "users",
     "ninja_jwt",
-    "ninja",
 ]
 
 MIDDLEWARE = [
@@ -66,7 +64,7 @@ MIDDLEWARE = [
 # Since Nginx proxies both to port 80, we can often simplify or remove CORS
 # For now, allow the proxy host
 CORS_ALLOW_ALL_ORIGINS = True
-CSRF_TRUSTED_ORIGINS = ["http://localhost"]
+CSRF_TRUSTED_ORIGINS = ["http://localhost", "http://127.0.0.1"]
 
 ROOT_URLCONF = "guinea_pig.urls"
 
