@@ -44,6 +44,7 @@ services:
     volumes:
       - ../backend:/app
       - ../data:/app/data
+      - static_volume:/app/staticfiles
     command: python manage.py runserver 0.0.0.0:8000
     depends_on:
       - db
@@ -52,7 +53,6 @@ services:
   frontend:
     build: ../frontend
     environment:
-      - VITE_API_URL=http://localhost:8000/api
       - VITE_API_URL=/api
     volumes:
       - ../frontend:/project/frontend
@@ -64,9 +64,12 @@ services:
     build: ../nginx
     ports:
       - "80:80"
+    volumes:
+      - static_volume:/app/static:ro
     depends_on:
       - backend
       - frontend
 
 volumes:
   postgres_data:
+  static_volume:
