@@ -60,9 +60,10 @@ services:
     volumes:
       - ../frontend:/app
       - /app/node_modules
+      - frontend_assets:/app/dist 
     # For debugging/development, use dev server; for prod, this service isn't strictly needed
     # if you build on the host, but here's how to keep it alive:
-    command: npm run dev -- --host
+    command: npm run build
     depends_on:
       - backend
 
@@ -74,6 +75,7 @@ services:
     volumes:
       - static_volume:/app/static:ro
       - ../nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - frontend_assets:/usr/share/nginx/html:ro 
       - /etc/letsencrypt:/etc/letsencrypt:rw # For Certbot certificates
       - /var/www/certbot:/var/www/certbot:rw # For Certbot challenges
     depends_on:
@@ -83,3 +85,4 @@ services:
 volumes:
   postgres_data:
   static_volume:
+  frontend_assets:
