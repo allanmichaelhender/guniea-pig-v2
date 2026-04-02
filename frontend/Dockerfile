@@ -1,8 +1,7 @@
 FROM node:22-alpine as build-stage
 WORKDIR /app
 COPY package*.json ./
-RUN npm install vite@latest @vitejs/plugin-react@latest
-RUN npm install
+RUN npm install --legacy-peer-deps
 COPY . .
 
 # Vite requires environment variables to be present during the build process
