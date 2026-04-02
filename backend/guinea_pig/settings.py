@@ -38,7 +38,8 @@ ALLOWED_HOSTS = [
     "guinea-pig-portfolio.ddnsfree.com",
 ]
 
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# Commented out for debugging to ensure Django doesn't strictly look for HTTPS headers
+# SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 
 # Application definition
