@@ -52,7 +52,6 @@ def run_risk_pipeline():
     # --- Metric A.2: Volatility Surge ---
     # Calculate Z-scores using the rolling vol dataframe we just made
     surge_data = calculate_surge_metrics(rolling_vol)
-    print(surge_data)
 
     for asset_id, metrics in surge_data.items():
         if asset_id not in updates:

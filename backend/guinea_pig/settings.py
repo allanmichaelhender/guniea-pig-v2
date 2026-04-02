@@ -36,6 +36,8 @@ ALLOWED_HOSTS = [
     "16.171.70.173",
 ]
 
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 
 # Application definition
 
@@ -71,7 +73,7 @@ MIDDLEWARE = [
 # Since Nginx proxies both to port 80, we can often simplify or remove CORS
 # For now, allow the proxy host
 CORS_ALLOW_ALL_ORIGINS = True
-CSRF_TRUSTED_ORIGINS = ["http://localhost", "http://127.0.0.1"]
+CSRF_TRUSTED_ORIGINS = ["http://localhost", "http://127.0.0.1", "http://16.171.70.173"]
 
 ROOT_URLCONF = "guinea_pig.urls"
 
