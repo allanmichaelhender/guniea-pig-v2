@@ -1,7 +1,7 @@
-# Stage 1: Build the React app
-FROM node:20-alpine as build-stage
+FROM node:22-alpine as build-stage
 WORKDIR /app
 COPY package*.json ./
+RUN npm install vite@latest @vitejs/plugin-react@latest
 RUN npm install
 COPY . .
 
