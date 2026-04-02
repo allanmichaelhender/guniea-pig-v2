@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   BarChart3,
   History,
-  GitCompare,
   BrainCircuit,
   Loader2,
   TrendingUp,
@@ -212,7 +211,6 @@ const PortfolioAnalyzer = ({ result }: PortfolioAnalyzerProps) => {
                     <YAxis
                       hide={false}
                       domain={["auto", "auto"]}
-                      nice={true}
                       tickCount={8}
                       tick={{ fontSize: 10, fill: "#94a3b8" }}
                       axisLine={{ stroke: "#e2e8f0", strokeWidth: 1 }}
@@ -231,8 +229,8 @@ const PortfolioAnalyzer = ({ result }: PortfolioAnalyzerProps) => {
                     />
                     <Tooltip
                       labelFormatter={(label) => `Date: ${label}`}
-                      formatter={(value: number) => [
-                        value.toFixed(4),
+                      formatter={(value: any) => [
+                        typeof value === "number" ? value.toFixed(4) : value,
                         "Growth Index",
                       ]}
                       contentStyle={{
@@ -279,7 +277,7 @@ const PortfolioAnalyzer = ({ result }: PortfolioAnalyzerProps) => {
                       portfolio dynamics...
                     </span>
                   ) : (
-                    formatNarrative(narrative) || "No analysis available."
+                    formatNarrative(narrative || "") || "No analysis available."
                   )}
                 </div>
               </div>

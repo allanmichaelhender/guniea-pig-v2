@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
 import PortfolioBuilder from "@/components/PortfolioBuilder";
 import PortfolioAnalyzer from "@/components/PortfolioAnalyzer";
 import { LineChart, LogIn, LogOut, Sun, Moon, User } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { authService } from "@/services/auth";
 
 interface HomeProps {
@@ -15,7 +15,6 @@ const Home = ({ theme, setTheme }: HomeProps) => {
   const [username, setUsername] = useState<string | null>(
     localStorage.getItem("username"),
   );
-  const navigate = useNavigate();
 
   const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
   const handleLogout = () => {
