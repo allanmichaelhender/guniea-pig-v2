@@ -1,20 +1,15 @@
-FROM node:22-alpine as build-stage
+# Stage 1: Build the React app
+FROM node:22-alpine AS build-stage
 WORKDIR /app
 COPY package*.json ./
+# Use the legacy flag we found earlier to prevent version crashes
 RUN npm install --legacy-peer-deps
 COPY . .
-
-# Vite requires environment variables to be present during the build process
-ARG VITE_API_URL=/api
-ENV VITE_API_URL=$VITE_API_URL
-
 RUN npm run build
 
-# Stage 2: Serve with Nginx
+# Stage 2: Serve the static files
 FROM nginx:stable-alpine
-# Copy the build output from the first stage to Nginx's folder
+# Copy the finished build from the first stage
 COPY --from=build-stage /app/dist /usr/share/nginx/html
-# Copy your custom nginx config (if you have one)
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
