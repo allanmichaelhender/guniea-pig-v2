@@ -33,7 +33,7 @@ ALLOWED_HOSTS = [
     "0.0.0.0",
     "backend",
     "nginx",
-    "16.171.70.173",
+    "16.16.216.22",
 ]
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
