@@ -69,7 +69,6 @@ services:
       - "443:443" # For HTTPS
     volumes:
       - static_volume:/app/static:ro
-      - ../frontend/dist:/usr/share/nginx/html:ro # Serve frontend static files
       - ./nginx/conf.d:/etc/nginx/conf.d:ro # Mount custom Nginx configuration
       - /etc/letsencrypt:/etc/letsencrypt:rw # For Certbot certificates
       - /var/www/certbot:/var/www/certbot:rw # For Certbot challenges

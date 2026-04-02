@@ -27,7 +27,14 @@ SECRET_KEY = "django-insecure-change-this-in-production"
 DEBUG = True
 
 # Add localhost for local dev and your EC2 IP/Domain for prod
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "backend", "nginx"]
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+    "backend",
+    "nginx",
+    "16.171.70.173",
+]
 
 
 # Application definition
