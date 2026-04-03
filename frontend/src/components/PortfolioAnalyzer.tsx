@@ -16,14 +16,11 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import apiClient from "@/services/client";
-
-interface PortfolioAnalyzerProps {
-  result: any;
-}
+import { PortfolioAnalyzerProps, LLMAnalysisResponse, PortfolioResponse } from "@/types/types";
 
 const PortfolioAnalyzer = ({ result }: PortfolioAnalyzerProps) => {
   const [activeTab, setActiveTab] = useState<"latest" | "past">("latest");
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<PortfolioResponse[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [narrative, setNarrative] = useState<string | null>(null);
   const [loadingNarrative, setLoadingNarrative] = useState(false);
@@ -46,7 +43,7 @@ const PortfolioAnalyzer = ({ result }: PortfolioAnalyzerProps) => {
     setNarrative(null);
     setLoadingNarrative(true);
     try {
-      const response = await apiClient.post("/llm/analyze", {
+      const response = await apiClient.post<LLMAnalysisResponse>("/llm/analyze", {
         name: "Draft Portfolio",
         holdings: result.simulation_metadata.holdings,
       });
@@ -61,7 +58,7 @@ const PortfolioAnalyzer = ({ result }: PortfolioAnalyzerProps) => {
   const fetchHistory = async () => {
     setLoadingHistory(true);
     try {
-      const response = await apiClient.get("/portfolios/");
+      const response = await apiClient.get<PortfolioResponse[]>("/portfolios/");
       setHistory(response.data);
     } catch (err) {
       console.error("Failed to fetch history", err);

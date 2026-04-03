@@ -49,11 +49,6 @@ class PortfolioOut(PortfolioIn):
 
 
 class SimulationResponse(Schema):
-    """
-    Response for the ephemeral /simulate endpoint.
-    Matches PortfolioOut structure where possible for frontend reuse.
-    """
-
     metrics: Dict[str, float]
     performance_chart: List[Dict[str, Any]]
     simulation_metadata: Dict[str, Any]

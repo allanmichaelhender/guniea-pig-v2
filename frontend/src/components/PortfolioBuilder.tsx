@@ -3,10 +3,9 @@ import { PlusCircle, Search, Trash2, Loader2, Sparkles } from "lucide-react";
 import { assetService, Asset } from "@/services/assetService";
 import { llmService } from "@/services/llmService";
 import apiClient from "@/services/client";
+import { PortfolioBuilderProps } from "@/types/types";
 
-interface PortfolioBuilderProps {
-  onSimulationComplete: (result: any) => void;
-}
+
 
 const PortfolioBuilder = ({ onSimulationComplete }: PortfolioBuilderProps) => {
   const [query, setQuery] = useState("");
