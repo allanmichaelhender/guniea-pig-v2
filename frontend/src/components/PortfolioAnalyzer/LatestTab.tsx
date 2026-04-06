@@ -13,8 +13,8 @@ import {
   BrainCircuit,
   Loader2,
   AlertTriangle,
-  Activity,
   LayoutGrid,
+  Save,
 } from "lucide-react";
 import RiskMap from "@/components/PortfolioAnalyzer/RiskMap";
 
@@ -24,7 +24,21 @@ export default function LatestTab({
   formatPct,
   result,
   riskData,
-}: LatestTabProps & { riskData: any }) {
+  onSave,
+  isSaving,
+  portfolioName,
+  setPortfolioName,
+  portfolioDescription,
+  setPortfolioDescription,
+}: LatestTabProps & {
+  riskData: any;
+  onSave: () => void;
+  isSaving: boolean;
+  portfolioName: string;
+  setPortfolioName: (val: string) => void;
+  portfolioDescription: string;
+  setPortfolioDescription: (val: string) => void;
+}) {
   const MetricCard = ({
     label,
     value,
@@ -94,6 +108,48 @@ export default function LatestTab({
 
   return result ? (
     <div className="space-y-6">
+      {/* Save Action (Logged in only) */}
+      {localStorage.getItem("token") && (
+        <div className="flex flex-col md:flex-row items-end justify-end gap-3 bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+          <div className="w-full md:w-48">
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 ml-1">
+              Portfolio Name
+            </label>
+            <input
+              type="text"
+              placeholder="My Genius Porfolio 1.0"
+              value={portfolioName}
+              onChange={(e) => setPortfolioName(e.target.value)}
+              className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-slate-100"
+            />
+          </div>
+          <div className="w-full md:w-64">
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 ml-1">
+              Description
+            </label>
+            <input
+              type="text"
+              placeholder="Optional notes"
+              value={portfolioDescription}
+              onChange={(e) => setPortfolioDescription(e.target.value)}
+              className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-slate-100"
+            />
+          </div>
+          <button
+            onClick={onSave}
+            disabled={isSaving}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl transition-all shadow-md shadow-indigo-500/20 disabled:opacity-50"
+          >
+            {isSaving ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            Save Portfolio
+          </button>
+        </div>
+      )}
+
       {/* Portfolio Risk Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-rose-50/30 dark:bg-rose-900/10 p-4 rounded-xl border border-rose-100 dark:border-rose-900/30">

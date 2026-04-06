@@ -37,7 +37,11 @@ def simulate_portfolio(request, payload: PortfolioIn):
 
 @router.get("/", response=List[PortfolioOut], auth=JWTAuth())
 def list_portfolios(request):
-    return Portfolio.objects.filter(user=request.user)
+    return (
+        Portfolio.objects.filter(user=request.user)
+        .prefetch_related("holdings__asset")
+        .order_by("-id")
+    )
 
 
 @router.post("/", response=PortfolioOut, auth=JWTAuth())

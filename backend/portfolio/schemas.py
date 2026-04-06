@@ -14,7 +14,7 @@ def default_start_date():
     return date.today() - timedelta(days=365 * 5)
 
 
-class PortfolioIn(BaseModel):
+class PortfolioIn(Schema):
     name: str
     description: Optional[str] = None
     start_date: Optional[date] = Field(

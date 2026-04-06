@@ -16,6 +16,9 @@ export default function PortfolioAnalyzer({ result }: PortfolioAnalyzerProps) {
   const [narrative, setNarrative] = useState<string | null>(null);
   const [loadingNarrative, setLoadingNarrative] = useState(false);
   const [riskData, setRiskData] = useState<any>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [portfolioName, setPortfolioName] = useState("");
+  const [portfolioDescription, setPortfolioDescription] = useState("");
 
   const fetchRiskSummary = useCallback(async (tickers: string[] = []) => {
     try {
@@ -33,6 +36,31 @@ export default function PortfolioAnalyzer({ result }: PortfolioAnalyzerProps) {
       result?.simulation_metadata?.holdings?.map((h: any) => h.ticker) || [];
     fetchRiskSummary(tickers);
   }, [result, fetchRiskSummary]);
+
+  const handleSavePortfolio = async () => {
+    if (!result) return;
+    setIsSaving(true);
+    try {
+      await apiClient.post("/portfolios/", {
+        name:
+          portfolioName ||
+          `Portfolio ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+        description: portfolioDescription,
+        holdings: result.simulation_metadata.holdings,
+        start_date: result.simulation_metadata.requested_start_date,
+      });
+      // Refresh history so it's ready if they switch tabs
+      fetchHistory();
+      alert("Portfolio saved successfully!");
+      setPortfolioName("");
+      setPortfolioDescription("");
+    } catch (err) {
+      console.error("Failed to save portfolio", err);
+      alert("Error saving portfolio. Please make sure you are logged in.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (activeTab === "past") {
@@ -106,6 +134,12 @@ export default function PortfolioAnalyzer({ result }: PortfolioAnalyzerProps) {
             formatPct={formatPct}
             result={result}
             riskData={riskData}
+            onSave={handleSavePortfolio}
+            isSaving={isSaving}
+            portfolioName={portfolioName}
+            setPortfolioName={setPortfolioName}
+            portfolioDescription={portfolioDescription}
+            setPortfolioDescription={setPortfolioDescription}
           />
         ) : (
           <HistoryTab
