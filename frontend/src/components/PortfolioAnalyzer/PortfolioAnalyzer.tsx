@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { BarChart3, History } from "lucide-react";
 import apiClient from "@/services/client";
 import HistoryTab from "@/components/PortfolioAnalyzer/HistoryTab";
@@ -9,12 +9,30 @@ import {
   PortfolioResponse,
 } from "@/types/types";
 
-const PortfolioAnalyzer = ({ result }: PortfolioAnalyzerProps) => {
+export default function PortfolioAnalyzer({ result }: PortfolioAnalyzerProps) {
   const [activeTab, setActiveTab] = useState<"latest" | "past">("latest");
   const [history, setHistory] = useState<PortfolioResponse[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [narrative, setNarrative] = useState<string | null>(null);
   const [loadingNarrative, setLoadingNarrative] = useState(false);
+  const [riskData, setRiskData] = useState<any>(null);
+
+  const fetchRiskSummary = useCallback(async (tickers: string[] = []) => {
+    try {
+      const response = await apiClient.post("/assets/risk-summary", {
+        tickers,
+      });
+      setRiskData(response.data);
+    } catch (err) {
+      console.error("Failed to fetch risk summary", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    const tickers =
+      result?.simulation_metadata?.holdings?.map((h: any) => h.ticker) || [];
+    fetchRiskSummary(tickers);
+  }, [result, fetchRiskSummary]);
 
   useEffect(() => {
     if (activeTab === "past") {
@@ -87,6 +105,7 @@ const PortfolioAnalyzer = ({ result }: PortfolioAnalyzerProps) => {
             narrative={narrative}
             formatPct={formatPct}
             result={result}
+            riskData={riskData}
           />
         ) : (
           <HistoryTab
@@ -98,6 +117,4 @@ const PortfolioAnalyzer = ({ result }: PortfolioAnalyzerProps) => {
       </div>
     </div>
   );
-};
-
-export default PortfolioAnalyzer;
+}

@@ -8,14 +8,23 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { BarChart3, BrainCircuit, Loader2 } from "lucide-react";
+import {
+  BarChart3,
+  BrainCircuit,
+  Loader2,
+  AlertTriangle,
+  Activity,
+  LayoutGrid,
+} from "lucide-react";
+import RiskMap from "@/components/PortfolioAnalyzer/RiskMap";
 
 export default function LatestTab({
   loadingNarrative,
   narrative,
   formatPct,
   result,
-}: LatestTabProps) {
+  riskData,
+}: LatestTabProps & { riskData: any }) {
   const MetricCard = ({
     label,
     value,
@@ -85,6 +94,40 @@ export default function LatestTab({
 
   return result ? (
     <div className="space-y-6">
+      {/* Portfolio Risk Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-rose-50/30 dark:bg-rose-900/10 p-4 rounded-xl border border-rose-100 dark:border-rose-900/30">
+          <div className="flex items-center gap-2 mb-1">
+            <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+              Portfolio Surges
+            </p>
+          </div>
+          <p className="text-2xl font-black text-rose-600 dark:text-rose-400">
+            {riskData?.portfolio_surge_count || 0}
+            <span className="text-xs font-bold text-slate-400 uppercase">
+              {" "}
+              Active Alerts
+            </span>
+          </p>
+        </div>
+        <div className="bg-emerald-50/30 dark:bg-emerald-900/10 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
+          <div className="flex items-center gap-2 mb-1">
+            <LayoutGrid className="w-3.5 h-3.5 text-emerald-500" />
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+              Risk Clusters
+            </p>
+          </div>
+          <p className="text-2xl font-black text-slate-800 dark:text-slate-200">
+            {riskData?.portfolio_clusters_count || 0}
+            <span className="text-xs font-bold text-slate-400 uppercase">
+              {" "}
+              Groups
+            </span>
+          </p>
+        </div>
+      </div>
+
       {/* Metrics Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <MetricCard
@@ -107,88 +150,92 @@ export default function LatestTab({
         />
       </div>
 
-      {/* Chart */}
-      <div className="h-64 w-full bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart
-            data={result.performance_chart}
-            margin={{ top: 10, right: 10, left: 20, bottom: 25 }}
-          >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              vertical={true}
-              stroke="#f1f5f9"
-            />
-            <XAxis
-              dataKey="date"
-              hide={false}
-              tick={{ fontSize: 10, fill: "#94a3b8" }}
-              minTickGap={40}
-              axisLine={{ stroke: "#e2e8f0", strokeWidth: 1 }}
-              label={{
-                value: "TIMELINE",
-                position: "insideBottom",
-                offset: -12,
-                style: {
-                  fontSize: "10px",
-                  fontWeight: 700,
-                  fill: "#94a3b8",
-                  letterSpacing: "0.05em",
-                },
-              }}
-            />
-            <YAxis
-              hide={false}
-              domain={["auto", "auto"]}
-              tickCount={8}
-              tick={{ fontSize: 10, fill: "#94a3b8" }}
-              axisLine={{ stroke: "#e2e8f0", strokeWidth: 1 }}
-              label={{
-                value: "GROWTH INDEX",
-                angle: -90,
-                position: "insideLeft",
-                offset: 10,
-                style: {
-                  fontSize: "10px",
-                  fontWeight: 700,
-                  fill: "#94a3b8",
-                  letterSpacing: "0.05em",
-                },
-              }}
-            />
-            <Tooltip
-              labelFormatter={(label) => `Date: ${label}`}
-              formatter={(value: any) => [
-                typeof value === "number" ? value.toFixed(4) : value,
-                "Growth Index",
-              ]}
-              contentStyle={{
-                borderRadius: "12px",
-                border: "none",
-                boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
-                backgroundColor: "rgba(255, 255, 255, 0.95)",
-              }}
-              itemStyle={{
-                fontSize: "12px",
-                fontWeight: 600,
-                color: "#4f46e5",
-              }}
-              labelStyle={{
-                fontSize: "11px",
-                fontWeight: 500,
-                color: "#64748b",
-                marginBottom: "4px",
-              }}
-            />
-            <Line
-              type="monotone"
-              dataKey="value"
-              stroke="#4f46e5"
-              strokeWidth={2}
-              dot={false}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+      {/* Analysis Row: Performance + Risk Map */}
+      <div className="flex flex-col lg:flex-row gap-6">
+        <div className="lg:flex-[1.5] bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700 min-h-[420px] flex flex-col">
+          <div className="mb-4">
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-tight">
+              Portfolio Growth
+            </h3>
+            <p className="text-[10px] text-slate-400 uppercase font-medium tracking-wide">
+              Cumulative Wealth Index
+            </p>
+          </div>
+          <div className="flex-1 min-h-[300px]">
+            <ResponsiveContainer width="100%" height={350}>
+              <LineChart
+                data={result.performance_chart}
+                margin={{ top: 10, right: 10, left: -20, bottom: 25 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="#f1f5f9"
+                />
+                <XAxis
+                  dataKey="date"
+                  hide={false}
+                  tick={{ fontSize: 9, fill: "#94a3b8" }}
+                  minTickGap={40}
+                  axisLine={{ stroke: "#e2e8f0", strokeWidth: 1 }}
+                  label={{
+                    value: "TIMELINE",
+                    position: "insideBottom",
+                    offset: -12,
+                    style: {
+                      fontSize: "9px",
+                      fontWeight: 700,
+                      fill: "#94a3b8",
+                      letterSpacing: "0.05em",
+                    },
+                  }}
+                />
+                <YAxis
+                  hide={false}
+                  domain={["auto", "auto"]}
+                  tickCount={6}
+                  tick={{ fontSize: 9, fill: "#94a3b8" }}
+                  axisLine={{ stroke: "#e2e8f0", strokeWidth: 1 }}
+                />
+                <Tooltip
+                  labelFormatter={(label) => `Date: ${label}`}
+                  formatter={(value: any) => [
+                    typeof value === "number" ? value.toFixed(4) : value,
+                    "Growth Index",
+                  ]}
+                  contentStyle={{
+                    borderRadius: "12px",
+                    border: "none",
+                    boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                    backgroundColor: "rgba(255, 255, 255, 0.95)",
+                  }}
+                  itemStyle={{
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    color: "#4f46e5",
+                  }}
+                  labelStyle={{
+                    fontSize: "11px",
+                    fontWeight: 500,
+                    color: "#64748b",
+                    marginBottom: "4px",
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#4f46e5"
+                  strokeWidth={2.5}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="lg:flex-1">
+          <RiskMap data={riskData?.map_data || []} />
+        </div>
       </div>
 
       {/* AI Narrative */}

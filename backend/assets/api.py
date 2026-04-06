@@ -3,7 +3,12 @@ from ninja import Router, Query
 from assets.models import Asset
 from pgvector.django import CosineDistance
 from sentence_transformers import SentenceTransformer
-from assets.schemas import AssetSchema, SemanticSearchSchema
+from assets.schemas import (
+    AssetSchema,
+    SemanticSearchSchema,
+    RiskSummarySchema,
+    RiskSummaryInputSchema,
+)
 from ninja_jwt.authentication import JWTAuth
 
 
@@ -82,3 +87,44 @@ def semantic_search(request, payload: SemanticSearchSchema):
     )
 
     return qs
+
+
+@router.post("/risk-summary", response=RiskSummarySchema)
+def get_risk_summary(request, payload: RiskSummaryInputSchema):
+    portfolio_tickers = set(t.upper() for t in payload.tickers)
+
+    # Filter to only clustered assets that are in the user's portfolio
+    portfolio_assets = Asset.objects.filter(ticker__in=portfolio_tickers).exclude(
+        cluster_x__isnull=True
+    )
+
+    # Portfolio specific stats
+    portfolio_count = portfolio_assets.count()
+    portfolio_surge_count = portfolio_assets.filter(is_volatility_surge=True).count()
+    portfolio_clusters_count = portfolio_assets.values("cluster_id").distinct().count()
+
+    map_data = [
+        {
+            "ticker": a.ticker,
+            "name": a.name,
+            "cluster_id": a.cluster_id,
+            "cluster_x": a.cluster_x,
+            "cluster_y": a.cluster_y,
+            "is_volatility_surge": a.is_volatility_surge,
+            "sigma_52": a.sigma_52,
+            "is_in_portfolio": True,
+        }
+        for a in portfolio_assets
+    ]
+
+    return {
+        "total_assets": portfolio_count,
+        "surge_count": portfolio_surge_count,
+        "portfolio_surge_count": portfolio_surge_count,
+        "portfolio_clusters_count": portfolio_clusters_count,
+        "surge_percentage": (portfolio_surge_count / portfolio_count * 100)
+        if portfolio_count > 0
+        else 0,
+        "clusters_count": portfolio_clusters_count,
+        "map_data": map_data,
+    }
