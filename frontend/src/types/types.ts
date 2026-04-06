@@ -18,8 +18,6 @@ export interface LLMAnalysisResponse {
   analysis: string;
 }
 
-
-
 export interface HoldingSchema {
   ticker: string;
   weight: number;
@@ -41,4 +39,10 @@ export interface PortfolioResponse extends PortfolioIn {
   sharpe_ratio: number | null;
   max_drawdown: number | null;
   performance_history: Array<Record<string, any>> | null;
+}
+
+export interface MetricCardProps {
+  label: string;
+  value: number | string;
+  color?: string;
 }
