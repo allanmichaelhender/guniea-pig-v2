@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { PlusCircle, Search, Trash2, Loader2, Sparkles } from "lucide-react";
 import { assetService, Asset } from "@/services/assetService";
 import { llmService } from "@/services/llmService";

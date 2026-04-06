@@ -1,6 +1,6 @@
 import { useState } from "react";
-import PortfolioBuilder from "@/components/PortfolioBuilder";
-import PortfolioAnalyzer from "@/components/PortfolioAnalyzer";
+import PortfolioBuilder from "@/components/PortfolioBuilder/PortfolioBuilder";
+import PortfolioAnalyzer from "@/components/PortfolioAnalyzer/PortfolioAnalyzer";
 import { LineChart, LogIn, LogOut, Sun, Moon, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import { authService } from "@/services/auth";

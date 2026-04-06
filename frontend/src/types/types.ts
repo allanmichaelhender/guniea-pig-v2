@@ -13,6 +13,16 @@ export interface PortfolioBuilderProps {
   onSimulationComplete: (result: SimulationResponse) => void;
 }
 
+
+export interface LatestTabProps {
+  loadingNarrative: boolean;
+  narrative: string | null;
+  formatPct: (val: number) => string;
+  result: SimulationResponse
+}
+
+
+
 // AnalysisResponse in backend
 export interface LLMAnalysisResponse {
   analysis: string;
@@ -46,3 +56,4 @@ export interface MetricCardProps {
   value: number | string;
   color?: string;
 }
+

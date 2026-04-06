@@ -41,6 +41,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - TIINGO_API_KEY=${TIINGO_API_KEY}
       - GROQ_API_KEY=${GROQ_API_KEY}
+      - DJANGO_DEBUG=${DJANGO_DEBUG}
     volumes:
       - ../backend:/app
       - ../data:/app/data
