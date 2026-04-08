@@ -17,12 +17,13 @@ import {
   Save,
 } from "lucide-react";
 import RiskMap from "@/components/PortfolioAnalyzer/RiskMap";
+import { RiskPoint } from "@/types/types";
 
 export default function LatestTab({
   loadingNarrative,
   narrative,
   formatPct,
-  result,
+  simulationResult,
   riskData,
   onSave,
   isSaving,
@@ -98,7 +99,7 @@ export default function LatestTab({
     });
   };
 
-  return result ? (
+  return simulationResult ? (
     <div className="space-y-6">
       {/* Save Action (Logged in only) */}
       {localStorage.getItem("token") && (
@@ -180,20 +181,20 @@ export default function LatestTab({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <MetricCard
           label="Ann. Return"
-          value={formatPct(result.metrics.annualized_return)}
+          value={formatPct(simulationResult.metrics.annualized_return)}
           color="text-emerald-600"
         />
         <MetricCard
           label="Volatility"
-          value={formatPct(result.metrics.volatility)}
+          value={formatPct(simulationResult.metrics.volatility)}
         />
         <MetricCard
           label="Sharpe"
-          value={result.metrics.sharpe_ratio.toFixed(2)}
+          value={simulationResult.metrics.sharpe_ratio.toFixed(2)}
         />
         <MetricCard
           label="Max DD"
-          value={formatPct(result.metrics.max_drawdown)}
+          value={formatPct(simulationResult.metrics.max_drawdown)}
           color="text-rose-600"
         />
       </div>
@@ -212,7 +213,7 @@ export default function LatestTab({
           <div className="flex-1 min-h-[300px]">
             <ResponsiveContainer width="100%" height={350}>
               <LineChart
-                data={result.performance_chart}
+                data={simulationResult.performance_chart}
                 margin={{ top: 10, right: 10, left: -20, bottom: 25 }}
               >
                 <CartesianGrid
@@ -282,7 +283,16 @@ export default function LatestTab({
         </div>
 
         <div className="lg:flex-1">
-          <RiskMap data={riskData?.map_data || []} />
+          <RiskMap
+            data={
+              (riskData?.map_data || []).filter(
+                (p) =>
+                  p.cluster_x !== null &&
+                  p.cluster_y !== null &&
+                  p.cluster_id !== null,
+              ) as RiskPoint[]
+            }
+          />
         </div>
       </div>
 

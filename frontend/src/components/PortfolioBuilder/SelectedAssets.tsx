@@ -14,7 +14,7 @@ export default function selectedAssets({
   runSimulation,
 }: selectedAssetsProps) {
   return (
-    <div className="flex-1 flex flex-col p-6 pt-0">
+    <div className="flex-1 flex flex-col justify-end p-6 pt-0">
       {holdings.length === 0 ? (
         <div className="border-2 border-dashed border-slate-200 rounded-xl flex-1 flex flex-col items-center justify-center text-slate-400 p-8 text-center">
           <PlusCircle className="w-10 h-10 mb-2 opacity-20" />
@@ -56,8 +56,7 @@ export default function selectedAssets({
           ))}
         </div>
       )}
-      {/* Run Simulation button is flex-none */}
-      <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex-none">
+      <div className="px-0 py-4 flex-none border-none">
         <button
           disabled={holdings.length === 0 || loading}
           onClick={runSimulation}

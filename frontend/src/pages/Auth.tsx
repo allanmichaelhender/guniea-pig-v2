@@ -65,20 +65,7 @@ const Auth = () => {
               }
             />
           </div>
-          {!isLogin && (
-            <div>
-              <label className="block text-sm font-medium mb-1">Email</label>
-              <input
-                type="email"
-                required
-                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg p-3 focus:ring-2 focus:ring-indigo-500"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-              />
-            </div>
-          )}
+      
           <div>
             <label className="block text-sm font-medium mb-1">Password</label>
             <input

@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { assetService, Asset } from "@/services/assetService";
-import { llmService } from "@/services/llmService";
 import apiClient from "@/services/client";
-import { PortfolioBuilderProps } from "@/types/types";
+import { PortfolioBuilderProps, Asset } from "@/types/types";
 import SearchBar from "@/components/PortfolioBuilder/SearchBar";
 import SelectedAssets from "@/components/PortfolioBuilder/SelectedAssets";
 
@@ -21,16 +19,31 @@ const PortfolioBuilder = ({ onSimulationComplete }: PortfolioBuilderProps) => {
     "ticker",
   );
 
+  async function searchTickers(query: string) {
+  const response = await apiClient.get<Asset[]>(
+    `/assets/ticker-search?q=${query}`,
+  );
+  return response.data;
+}
+
   const handleSearch = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setQuery(val);
     if (val.length >= 1) {
-      const results = await assetService.searchTickers(val);
+      const results = await searchTickers(val);
       setSearchResults(results);
     } else {
       setSearchResults([]);
     }
   };
+
+  async function smartSearch(prompt: string, limit: number = 10) {
+  const response = await apiClient.post("/llm/smart-search", {
+    prompt,
+    limit,
+  });
+  return response.data;
+}
 
   const handleSmartSearch = async (
     e: React.KeyboardEvent<HTMLTextAreaElement>,
@@ -39,7 +52,7 @@ const PortfolioBuilder = ({ onSimulationComplete }: PortfolioBuilderProps) => {
       e.preventDefault();
       setSearchingSmart(true);
       try {
-        const results = await llmService.smartSearch(smartQuery);
+        const results = await smartSearch(smartQuery);
         setSmartSearchResults(results);
       } catch (err) {
         console.error("Smart search failed", err);

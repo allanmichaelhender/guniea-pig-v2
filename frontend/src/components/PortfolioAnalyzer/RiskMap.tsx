@@ -10,19 +10,11 @@ import {
   LabelList,
   CartesianGrid,
 } from "recharts";
+import { RiskMapProps } from "@/types/types";
 
 
-interface RiskPoint {
-  ticker: string;
-  cluster_x: number;
-  cluster_y: number;
-  cluster_id: number;
-  is_volatility_surge: boolean;
-}
 
-interface RiskMapProps {
-  data: RiskPoint[];
-}
+
 
 const CLUSTER_COLORS = [
   "#6366f1",

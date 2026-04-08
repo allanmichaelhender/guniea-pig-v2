@@ -1,5 +1,5 @@
 import { Search, Loader2, Sparkles } from "lucide-react";
-import { Asset } from "@/services/assetService";
+import { Asset } from "@/types/types";
 
 interface searchBarProps {
   activeSearchTab: "ticker" | "smart";
@@ -74,7 +74,7 @@ export default function SearchBar({
                 onChange={handleSearch}
               />
               {searchResults.length > 0 && (
-                <div className="relative w-full mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg overflow-hidden">
+                <div className="absolute top-full left-0 z-50 w-full mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg overflow-hidden">
                   {searchResults.map((asset) => {
                     const isRestricted =
                       !asset.is_base_asset && !localStorage.getItem("token");
@@ -131,8 +131,8 @@ export default function SearchBar({
                 onChange={(e) => setSmartQuery(e.target.value)}
                 onKeyDown={handleSmartSearch}
               />
-              {smartSearchResults.length > 0 && (
-                <div className="relative w-full mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg overflow-hidden">
+              {smartSearchResults.length > 0 && ( // Added z-20 for better layering
+                <div className="absolute top-full left-0 z-50 w-full mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg overflow-hidden">
                   <div className="px-4 py-1.5 bg-indigo-50/50 dark:bg-indigo-900/20 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
                     Top Results
                   </div>

@@ -4,6 +4,7 @@ import PortfolioAnalyzer from "@/components/PortfolioAnalyzer/PortfolioAnalyzer"
 import { LineChart, LogIn, LogOut, Sun, Moon, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import { authService } from "@/services/auth";
+import { SimulationResponse } from "@/types/types";
 
 interface HomeProps {
   theme: "dark" | "light";
@@ -11,7 +12,9 @@ interface HomeProps {
 }
 
 const Home = ({ theme, setTheme }: HomeProps) => {
-  const [simulationResult, setSimulationResult] = useState<any>(null);
+  const [simulationResult, setSimulationResult] =
+    useState<SimulationResponse | null>(null);
+
   const [username, setUsername] = useState<string | null>(
     localStorage.getItem("username"),
   );
@@ -72,14 +75,12 @@ const Home = ({ theme, setTheme }: HomeProps) => {
       {/* Main Content Area */}
       <main className="flex-1 overflow-hidden p-4 md:p-6 lg:p-8">
         <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-y-auto lg:overflow-hidden">
-          {/* Left Side: Construction (Desktop 5/12) */}
           <div className="lg:col-span-5 flex flex-col min-h-[500px] lg:h-full">
             <PortfolioBuilder onSimulationComplete={setSimulationResult} />
           </div>
 
-          {/* Right Side: Analysis (Desktop 7/12) */}
           <div className="lg:col-span-7 flex flex-col min-h-[600px] lg:h-full">
-            <PortfolioAnalyzer result={simulationResult} />
+            <PortfolioAnalyzer simulationResult={simulationResult} />
           </div>
         </div>
       </main>

@@ -6,18 +6,18 @@ export interface SimulationResponse {
 }
 
 export interface PortfolioAnalyzerProps {
-  result: SimulationResponse;
+  simulationResult: SimulationResponse | null;
 }
 
 export interface PortfolioBuilderProps {
-  onSimulationComplete: (result: SimulationResponse) => void;
+  onSimulationComplete: (simulationResult: SimulationResponse | null) => void;
 }
 
 export interface LatestTabProps {
   loadingNarrative: boolean;
   narrative: string | null;
   formatPct: (val: number) => string;
-  result: SimulationResponse;
+  simulationResult: SimulationResponse | null;
   riskData: RiskSummary| null;
   onSave: () => void;
   isSaving: boolean;
@@ -40,7 +40,7 @@ export interface HoldingSchema {
 export interface PortfolioIn {
   name: string;
   description?: string | null;
-  start_date?: string; // Dates are transmitted as ISO strings in JSON
+  start_date?: string;
   holdings: HoldingSchema[];
 }
 
@@ -61,7 +61,7 @@ export interface MetricCardProps {
   color?: string;
 }
 
-interface RiskMapPoint {
+export interface RiskMapPoint {
   ticker: string;
   name: string;
   cluster_id: number | null;
@@ -69,15 +69,56 @@ interface RiskMapPoint {
   cluster_y: number | null;
   is_volatility_surge: boolean;
   sigma_52: number | null;
-  is_in_portfolio: boolean; // Defaults to false in Pydantic
+  is_in_portfolio: boolean; 
 }
 
 export interface RiskSummary {
   total_assets: number;
   surge_count: number;
-  portfolio_surge_count: number; // Defaults to 0
-  portfolio_clusters_count: number; // Defaults to 0
+  portfolio_surge_count: number; 
+  portfolio_clusters_count: number; 
   surge_percentage: number;
   clusters_count: number;
   map_data: RiskMapPoint[];
+}
+
+export interface RiskPoint {
+  ticker: string;
+  name: string;           
+cluster_x: number; 
+  cluster_y: number; 
+  cluster_id: number;
+  is_volatility_surge: boolean;
+  is_in_portfolio: boolean; 
+}
+
+export interface RiskMapProps {
+  data: RiskPoint[];
+}
+
+
+export interface Asset {
+  ticker: string;
+  name: string;
+  is_base_asset: boolean; 
+  sector?: string;    
+}
+
+export interface Holding {
+  ticker: string;
+  weight: number;
+}
+
+export interface SimulationResult {
+  status: string;
+  metrics: {
+    annualized_return: number;
+    volatility: number;
+    sharpe_ratio: number;
+    max_drawdown: number;
+  };
+  performance_chart: Array<{ date: string; value: number }>;
+  narrative?: string;
+  simulation_metadata?: any;
+  error?: string;
 }

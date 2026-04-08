@@ -7,16 +7,18 @@ import {
   PortfolioAnalyzerProps,
   LLMAnalysisResponse,
   PortfolioResponse,
-  RiskSummary
+  RiskSummary,
 } from "@/types/types";
 
-export default function PortfolioAnalyzer({ result }: PortfolioAnalyzerProps) {
+export default function PortfolioAnalyzer({
+  simulationResult,
+}: PortfolioAnalyzerProps) {
   const [activeTab, setActiveTab] = useState<"latest" | "past">("latest");
   const [history, setHistory] = useState<PortfolioResponse[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [narrative, setNarrative] = useState<string | null>(null);
   const [loadingNarrative, setLoadingNarrative] = useState(false);
-  const [riskData, setRiskData] = useState<RiskSummary | null >(null);
+  const [riskData, setRiskData] = useState<RiskSummary | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [portfolioName, setPortfolioName] = useState("");
   const [portfolioDescription, setPortfolioDescription] = useState("");
@@ -34,12 +36,12 @@ export default function PortfolioAnalyzer({ result }: PortfolioAnalyzerProps) {
 
   useEffect(() => {
     const tickers =
-      result?.simulation_metadata?.holdings?.map((h: any) => h.ticker) || [];
+      simulationResult?.simulation_metadata?.holdings?.map((h: any) => h.ticker) || [];
     fetchRiskSummary(tickers);
-  }, [result, fetchRiskSummary]);
+  }, [simulationResult, fetchRiskSummary]);
 
   const handleSavePortfolio = async () => {
-    if (!result) return;
+    if (!simulationResult) return;
     setIsSaving(true);
     try {
       await apiClient.post("/portfolios/", {
@@ -47,8 +49,8 @@ export default function PortfolioAnalyzer({ result }: PortfolioAnalyzerProps) {
           portfolioName ||
           `Portfolio ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
         description: portfolioDescription,
-        holdings: result.simulation_metadata.holdings,
-        start_date: result.simulation_metadata.requested_start_date,
+        holdings: simulationResult.simulation_metadata.holdings,
+        start_date: simulationResult.simulation_metadata.requested_start_date,
       });
       // Refresh history so it's ready if they switch tabs
       fetchHistory();
@@ -63,7 +65,6 @@ export default function PortfolioAnalyzer({ result }: PortfolioAnalyzerProps) {
     }
   };
 
-
   const fetchNarrative = async () => {
     setNarrative(null);
     setLoadingNarrative(true);
@@ -72,7 +73,7 @@ export default function PortfolioAnalyzer({ result }: PortfolioAnalyzerProps) {
         "/llm/analyze",
         {
           name: "Draft Portfolio",
-          holdings: result.simulation_metadata.holdings,
+          holdings: simulationResult?.simulation_metadata.holdings || [],
         },
       );
       setNarrative(response.data.analysis);
@@ -83,13 +84,13 @@ export default function PortfolioAnalyzer({ result }: PortfolioAnalyzerProps) {
     }
   };
 
-    useEffect(() => {
-    if (result && !result.narrative) {
+  useEffect(() => {
+    if (simulationResult && !simulationResult.narrative) {
       fetchNarrative();
-    } else if (result?.narrative) {
-      setNarrative(result.narrative);
+    } else if (simulationResult?.narrative) {
+      setNarrative(simulationResult.narrative);
     }
-  }, [result]);
+  }, [simulationResult]);
 
   const fetchHistory = async () => {
     setLoadingHistory(true);
@@ -103,7 +104,7 @@ export default function PortfolioAnalyzer({ result }: PortfolioAnalyzerProps) {
     }
   };
 
-    useEffect(() => {
+  useEffect(() => {
     if (activeTab === "past") {
       fetchHistory();
     }
@@ -134,7 +135,7 @@ export default function PortfolioAnalyzer({ result }: PortfolioAnalyzerProps) {
             loadingNarrative={loadingNarrative}
             narrative={narrative}
             formatPct={formatPct}
-            result={result}
+            simulationResult={simulationResult}
             riskData={riskData}
             onSave={handleSavePortfolio}
             isSaving={isSaving}
