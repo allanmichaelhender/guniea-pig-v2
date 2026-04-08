@@ -7,6 +7,7 @@ import {
   PortfolioAnalyzerProps,
   LLMAnalysisResponse,
   PortfolioResponse,
+  RiskSummary
 } from "@/types/types";
 
 export default function PortfolioAnalyzer({ result }: PortfolioAnalyzerProps) {
@@ -15,7 +16,7 @@ export default function PortfolioAnalyzer({ result }: PortfolioAnalyzerProps) {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [narrative, setNarrative] = useState<string | null>(null);
   const [loadingNarrative, setLoadingNarrative] = useState(false);
-  const [riskData, setRiskData] = useState<any>(null);
+  const [riskData, setRiskData] = useState<RiskSummary | null >(null);
   const [isSaving, setIsSaving] = useState(false);
   const [portfolioName, setPortfolioName] = useState("");
   const [portfolioDescription, setPortfolioDescription] = useState("");
@@ -62,19 +63,6 @@ export default function PortfolioAnalyzer({ result }: PortfolioAnalyzerProps) {
     }
   };
 
-  useEffect(() => {
-    if (activeTab === "past") {
-      fetchHistory();
-    }
-  }, [activeTab]);
-
-  useEffect(() => {
-    if (result && !result.narrative) {
-      fetchNarrative();
-    } else if (result?.narrative) {
-      setNarrative(result.narrative);
-    }
-  }, [result]);
 
   const fetchNarrative = async () => {
     setNarrative(null);
@@ -95,6 +83,14 @@ export default function PortfolioAnalyzer({ result }: PortfolioAnalyzerProps) {
     }
   };
 
+    useEffect(() => {
+    if (result && !result.narrative) {
+      fetchNarrative();
+    } else if (result?.narrative) {
+      setNarrative(result.narrative);
+    }
+  }, [result]);
+
   const fetchHistory = async () => {
     setLoadingHistory(true);
     try {
@@ -106,6 +102,12 @@ export default function PortfolioAnalyzer({ result }: PortfolioAnalyzerProps) {
       setLoadingHistory(false);
     }
   };
+
+    useEffect(() => {
+    if (activeTab === "past") {
+      fetchHistory();
+    }
+  }, [activeTab]);
 
   const formatPct = (val: number) => (val * 100).toFixed(2) + "%";
 

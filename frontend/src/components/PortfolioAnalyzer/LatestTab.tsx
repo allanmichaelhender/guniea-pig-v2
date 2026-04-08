@@ -30,15 +30,7 @@ export default function LatestTab({
   setPortfolioName,
   portfolioDescription,
   setPortfolioDescription,
-}: LatestTabProps & {
-  riskData: any;
-  onSave: () => void;
-  isSaving: boolean;
-  portfolioName: string;
-  setPortfolioName: (val: string) => void;
-  portfolioDescription: string;
-  setPortfolioDescription: (val: string) => void;
-}) {
+}: LatestTabProps) {
   const MetricCard = ({
     label,
     value,
