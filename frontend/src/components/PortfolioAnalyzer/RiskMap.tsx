@@ -10,8 +10,7 @@ import {
   LabelList,
   CartesianGrid,
 } from "recharts";
-import { TooltipProps } from "recharts";
-import { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
+
 
 interface RiskPoint {
   ticker: string;

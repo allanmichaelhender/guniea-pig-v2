@@ -102,7 +102,7 @@ export default function LatestTab({
     <div className="space-y-6">
       {/* Save Action (Logged in only) */}
       {localStorage.getItem("token") && (
-        <div className="flex flex-col md:flex-row items-end justify-end gap-3 bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+        <div className="flex flex-col md:flex-row items-end justify-start gap-3 bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
           <div className="w-full md:w-48">
             <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 ml-1">
               Portfolio Name
@@ -115,7 +115,7 @@ export default function LatestTab({
               className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-slate-100"
             />
           </div>
-          <div className="w-full md:w-64">
+          <div className="w-full md:flex-1">
             <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 ml-1">
               Description
             </label>

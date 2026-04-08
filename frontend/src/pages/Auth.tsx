@@ -8,12 +8,11 @@ const Auth = () => {
   const [formData, setFormData] = useState({
     username: "",
     password: "",
-    email: "",
   });
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
     try {
