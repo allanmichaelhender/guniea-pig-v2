@@ -12,14 +12,22 @@ services:
       - "5432:5432"
 
   redis:
-    image: redis:alpine
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
+    image: redis:7-alpine
+    restart: always
+    expose:
+      - "6379"
+
+  qcluster:
+    build: ./backend
+    command: python manage.py qcluster
+    volumes:
+      - ./backend:/app
+      - ./data:/app/data
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - redis
 
   pgadmin:
     image: dpage/pgadmin4

@@ -104,6 +104,18 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "guinea_pig.wsgi.application"
 
+Q_CLUSTER = {
+    'name': 'guinea-pig-q',
+    'workers': 4,
+    'timeout': 5000,  # Important: Must be > 3660 to allow for the 61-minute sleep
+    'retry': 6000,    # Must be > timeout
+    'redis': {
+        'host': 'redis', # This matches the service name in docker-compose
+        'port': 6379,
+        'db': 0,
+    },
+}
+
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases

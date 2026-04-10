@@ -27,7 +27,11 @@ def register(request, data: AuthIn):
             username=data.username, password=data.password, email=data.email or ""
         )
         refresh = RefreshToken.for_user(user)
-        return {"token": str(refresh.access_token), "username": user.username}
+        return {
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+            "username": user.username,
+        }
     except IntegrityError:
         return 400, {"message": "Username already exists"}
 
@@ -39,4 +43,8 @@ def login(request, data: AuthIn):
         return 401, {"message": "Invalid credentials"}
 
     refresh = RefreshToken.for_user(user)
-    return {"token": str(refresh.access_token), "username": user.username}
+    return {
+        "access": str(refresh.access_token),
+        "refresh": str(refresh),  # This is the long-lived refresh token
+        "username": user.username,
+    }
