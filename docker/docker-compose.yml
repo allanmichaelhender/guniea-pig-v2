@@ -18,11 +18,11 @@ services:
       - "6379"
 
   qcluster:
-    build: ./backend
+    build: ../backend
     command: python manage.py qcluster
     volumes:
-      - ./backend:/app
-      - ./data:/app/data
+      - ../backend:/app
+      - ../data:/app/data
     env_file:
       - .env
     depends_on:
