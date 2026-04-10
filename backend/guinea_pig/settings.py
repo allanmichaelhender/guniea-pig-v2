@@ -104,18 +104,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "guinea_pig.wsgi.application"
 
-Q_CLUSTER = {
-    'name': 'guinea-pig-q',
-    'workers': 4,
-    'timeout': 5000,  # Important: Must be > 3660 to allow for the 61-minute sleep
-    'retry': 6000,    # Must be > timeout
-    'redis': {
-        'host': 'redis', # This matches the service name in docker-compose
-        'port': 6379,
-        'db': 0,
-    },
-}
-
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
@@ -176,15 +164,16 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Django Q2 configuration
 Q_CLUSTER = {
-    "name": "guinea_pig",
+    "name": "guinea-pig-q",
     "workers": 4,
+    "timeout": 5000,  # Important: Allow for 61-minute sleep
+    "retry": 6000,  # Must be > timeout
     "recycle": 500,
-    "timeout": 60,
     "compress": True,
     "save_limit": 250,
     "queue_limit": 500,
     "cpu_affinity": 1,
-    "label": "Django Q2",
+    "label": "guinea-pig-q",
     "redis": {
         "host": "redis",
         "port": 6379,
